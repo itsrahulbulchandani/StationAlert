@@ -36,6 +36,7 @@ function App() {
 
   const requestLocationPermission = async () => {
     //IOS
+    try{
     if (Platform.OS === 'ios') {
       try{
         if (Platform.OS === 'ios') {
@@ -53,7 +54,8 @@ function App() {
             { enableHighAccuracy: false, timeout: 15000, maximumAge: 1 }
         );
         }
-    }catch(e){
+    }
+    catch(e){
       console.log(e)
     }
       return;
