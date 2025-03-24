@@ -12,6 +12,10 @@ import {
 } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
 
+import AlertScreen from './components/AlertScreen';
+import RouteMapScreen from './components/RouteMapScreen';
+import MapScreen from './components/MapScreen';
+
 // Mock data for metro stations and routes
 const metroRoutes = {
   purple: {
@@ -29,6 +33,7 @@ const metroRoutes = {
 };
 
 function App() {
+  const [activeTab, setActiveTab] = useState('route'); // 'alert', 'route', or 'map'
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [currentCoordinates, setCurrentCoordinates] = useState(null);
   const [location, setLocation] = useState(null);
@@ -153,6 +158,19 @@ function App() {
     );
   };
 
+  const renderScreen = () => {
+    switch (activeTab) {
+      case 'alert':
+        return <AlertScreen />;
+      case 'route':
+        return <RouteMapScreen />;
+      case 'map':
+        return <MapScreen />;
+      default:
+        return <RouteMapScreen />;
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#CC0000" />
@@ -160,45 +178,41 @@ function App() {
         <Text style={styles.headerTitle}>Detailed View</Text>
       </View>
       <View style={styles.tabContainer}>
-        <Text style={styles.tabText}>Alert</Text>
-        <Text style={[styles.tabText, styles.activeTab]}>Route Map</Text>
-        <Text style={styles.tabText}>Map</Text>
-      </View>
-      <ScrollView style={styles.mapContainer}>
         <TouchableOpacity
-          style={styles.button}
-          onPress={requestLocationPermission}>
-         
-          <Text style={styles.buttonText}>Get Current Location</Text>
-          {currentCoordinates && (
-             <>
-            <Text style={styles.coordinates}>
-              Latitude: {currentCoordinates.coords.latitude.toFixed(6)}
-            </Text>
-            <Text style={styles.coordinates}>
-              Longitude: {currentCoordinates.coords.longitude.toFixed(6)}
-            </Text>
-            </>
-          )}
+          onPress={() => setActiveTab('alert')}
+          style={styles.tabButton}>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === 'alert' && styles.activeTab,
+            ]}>
+            Alert
+          </Text>
         </TouchableOpacity>
-        {location && (
-          <View style={styles.locationContainer}>
-            <Text style={styles.locationText}>Your current location:</Text>
-            <Text style={styles.coordinates}>
-              Latitude: {location.latitude.toFixed(6)}
-            </Text>
-            <Text style={styles.coordinates}>
-              Longitude: {location.longitude.toFixed(6)}
-            </Text>
-          </View>
-        )}
-        
-        {error && <Text style={styles.errorText}>{error}</Text>}
-        
-        {Object.entries(metroRoutes).map(([routeName, route]) =>
-          renderRoute(routeName, route),
-        )}
-      </ScrollView>
+        <TouchableOpacity
+          onPress={() => setActiveTab('route')}
+          style={styles.tabButton}>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === 'route' && styles.activeTab,
+            ]}>
+            Route Map
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setActiveTab('map')}
+          style={styles.tabButton}>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === 'map' && styles.activeTab,
+            ]}>
+            Map
+          </Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.content}>{renderScreen()}</View>
     </SafeAreaView>
   );
 }
@@ -224,19 +238,22 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#DDDDDD',
   },
+  tabButton: {
+    flex: 1,
+  },
   tabText: {
     padding: 16,
     fontSize: 16,
     color: '#666666',
+    textAlign: 'center',
   },
   activeTab: {
     color: '#CC0000',
     borderBottomWidth: 2,
     borderBottomColor: '#CC0000',
   },
-  mapContainer: {
+  content: {
     flex: 1,
-    padding: 20,
   },
   routeContainer: {
     marginVertical: 40,
@@ -272,39 +289,6 @@ const styles = StyleSheet.create({
     top: 20,
     width: 100,
     left: -25,
-  },
-  button: {
-    backgroundColor: '#CC0000',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  locationContainer: {
-    backgroundColor: '#f5f5f5',
-    padding: 20,
-    borderRadius: 8,
-    marginTop: 20,
-  },
-  locationText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  coordinates: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 5,
-  },
-  errorText: {
-    color: '#CC0000',
-    marginTop: 20,
-    textAlign: 'center',
   },
 });
 
