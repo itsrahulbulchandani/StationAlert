@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import AlertScreen from './components/AlertScreen';
 import RouteMapScreen from './components/RouteMapScreen';
@@ -214,6 +215,8 @@ function App() {
       </View>
       <View style={styles.content}>{renderScreen()}</View>
     </SafeAreaView>
+
+
   );
 }
 
@@ -225,6 +228,7 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#CC0000',
     padding: 16,
+    height:60,
   },
   headerTitle: {
     color: 'white',
@@ -254,14 +258,15 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    zIndex:-1
   },
   routeContainer: {
-    marginVertical: 40,
-    height: 80,
+    marginVertical: 0,
+    height: 0,
   },
   routeTouchable: {
     position: 'relative',
-    height: '100%',
+    height: '10%',
     justifyContent: 'center',
   },
   routeLine: {
