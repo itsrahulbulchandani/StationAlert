@@ -12,6 +12,10 @@
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		7D4D6984F1100CB5737B5766 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		BF391EC62D99C8BF00886800 /* trips.txt in Resources */ = {isa = PBXBuildFile; fileRef = BF391EC52D99C8BF00886800 /* trips.txt */; };
+		BF391EC82D99C8D000886800 /* routes.txt in Resources */ = {isa = PBXBuildFile; fileRef = BF391EC72D99C8D000886800 /* routes.txt */; };
+		BF5C36CB2D984EA100A656AA /* stops.txt in Resources */ = {isa = PBXBuildFile; fileRef = BF5C36CA2D984EA100A656AA /* stops.txt */; };
+		BF68DC192D99D338000E5D3E /* shapes_with_colors.txt in Resources */ = {isa = PBXBuildFile; fileRef = BF68DC182D99D338000E5D3E /* shapes_with_colors.txt */; };
 		BF7E9D112D91C6040090ABAA /* shapes.txt in Resources */ = {isa = PBXBuildFile; fileRef = BF7E9D102D91C6040090ABAA /* shapes.txt */; };
 /* End PBXBuildFile section */
 
@@ -25,6 +29,10 @@
 		5DCACB8F33CDC322A6C60F78 /* libPods-AwesomeProject.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-AwesomeProject.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = AwesomeProject/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = AwesomeProject/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		BF391EC52D99C8BF00886800 /* trips.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = trips.txt; sourceTree = "<group>"; };
+		BF391EC72D99C8D000886800 /* routes.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = routes.txt; sourceTree = "<group>"; };
+		BF5C36CA2D984EA100A656AA /* stops.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = stops.txt; sourceTree = "<group>"; };
+		BF68DC182D99D338000E5D3E /* shapes_with_colors.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = shapes_with_colors.txt; sourceTree = "<group>"; };
 		BF7E9D102D91C6040090ABAA /* shapes.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = shapes.txt; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
@@ -72,6 +80,10 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
+				BF68DC182D99D338000E5D3E /* shapes_with_colors.txt */,
+				BF391EC72D99C8D000886800 /* routes.txt */,
+				BF391EC52D99C8BF00886800 /* trips.txt */,
+				BF5C36CA2D984EA100A656AA /* stops.txt */,
 				BF7E9D102D91C6040090ABAA /* shapes.txt */,
 				13B07FAE1A68108700A75B9A /* AwesomeProject */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
@@ -162,9 +174,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				BF7E9D112D91C6040090ABAA /* shapes.txt in Resources */,
+				BF5C36CB2D984EA100A656AA /* stops.txt in Resources */,
+				BF391EC82D99C8D000886800 /* routes.txt in Resources */,
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
+				BF68DC192D99D338000E5D3E /* shapes_with_colors.txt in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				7D4D6984F1100CB5737B5766 /* PrivacyInfo.xcprivacy in Resources */,
+				BF391EC62D99C8BF00886800 /* trips.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -385,10 +401,7 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
@@ -458,10 +471,7 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;
