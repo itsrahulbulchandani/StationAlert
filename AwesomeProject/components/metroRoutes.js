@@ -38,7 +38,7 @@
 //                 }
 //             },
 //             {
-//                 "name": "Seelam Pur",
+//                 "name": "Seelampur",
 //                 "coords": {
 //                     "latitude": 28.670324,
 //                     "longitude": 77.267311
@@ -185,7 +185,7 @@
 //                 }
 //             },
 //             {
-//                 "name": "Seelam Pur",
+//                 "name": "Seelampur",
 //                 "coords": {
 //                     "latitude": 28.670324,
 //                     "longitude": 77.267311
@@ -3083,7 +3083,7 @@ let metroRoutes = {
                 }
             },
             {
-                "name": "Seelam Pur",
+                "name": "Seelampur",
                 "color": "Red",
                 "color_code": "#FF0000",
                 "interchange": "FALSE",
@@ -5211,7 +5211,7 @@ let metroStation = [
     "Mansrover park",
     "Shahdara",
     "Welcome",
-    "Seelam Pur",
+    "Seelampur",
     "Shastri Park",
     "Kashmere Gate",
     "Tis Hazari",

@@ -1,5 +1,4 @@
 export const buildGraph = (stations, shapes) => {
-  console.log("Building graph from stations and shapes",shapes);
   const graph = {};
   // Add each station to the graph
   stations.forEach(station => {
@@ -88,11 +87,9 @@ const getClosestShapePoint = (shape, coordinate) => {
 
 // BFS to find all possible routes
 export const findAllRoutes = (graph, start, end, maxDepth = 50) => {
-  console.log(`Searching for routes from ${start} to ${end}`);
   
   // Check if start and end exist in graph
   if (!graph[start] || !graph[end]) {
-    console.log(`Start or end station not found in graph`);
     return [];
   }
   
@@ -110,7 +107,6 @@ export const findAllRoutes = (graph, start, end, maxDepth = 50) => {
     
     // If we've reached the destination, add the path to our results
     if (currentStation === end) {
-      console.log(`Found route to ${end}: ${currentPath.join(' -> ')}`);
       allRoutes.push({
         path: [...currentPath],
         distance: currentDistance
@@ -147,7 +143,6 @@ export const findAllRoutes = (graph, start, end, maxDepth = 50) => {
     }
   }
   
-  console.log(`Found ${allRoutes.length} routes`);
   
   // Sort routes by distance
   allRoutes.sort((a, b) => a.distance - b.distance);
@@ -156,12 +151,10 @@ export const findAllRoutes = (graph, start, end, maxDepth = 50) => {
 }
 
 export const findAllRoutes2  = (graph, start, end, stationLines, maxDepth = 50) => {
-  console.log(`Searching for routes from ${start} to ${end}`);
   
   // Check if start and end exist in graph
   if (!graph[start] || !graph[end]) {
-    console.log(`Start or end station not found in graph`);
-    return [];
+          return [];
   }
   
   // Array to store all possible routes
@@ -172,7 +165,9 @@ export const findAllRoutes2  = (graph, start, end, stationLines, maxDepth = 50) 
     if (path.length <= 1) return 0;
     
     let interchanges = 0;
+    let interChangeStations = [];
     let currentLine = null;
+    let lineChangeColors = [];
     
     for (let i = 0; i < path.length; i++) {
       const station = path[i];
@@ -190,23 +185,27 @@ export const findAllRoutes2  = (graph, start, end, stationLines, maxDepth = 50) 
       // Check if the line changed
       if (stationLine !== currentLine) {
         interchanges++;
+        interChangeStations.push(station)
+        lineChangeColors.push(stationLine);
         currentLine = stationLine;
       }
     }
     
-    return interchanges;
+    return {interchanges, interChangeStations, lineChangeColors};
   };
   
   // For DFS, we'll use a recursive function
-  function dfs(currentStation, path, totalDistance, visited) {
+  function dfs(currentStation, path, totalDistance, visited, colorPath) {
     // If we've reached the destination, add the path to our results≠
     if (currentStation === end) {
-      const interchanges = countInterchanges(path);
-      console.log(`Found route to ${end}: ${path.join(' -> ')} with ${interchanges} interchanges`);
+      const {interchanges, interChangeStations, lineChangeColors} = countInterchanges(path);
       allRoutes.push({
         path: [...path],
         distance: totalDistance,
-        interchanges: interchanges
+        interchanges: interchanges,
+        interChangeStations: interChangeStations,
+        colorPath: [...colorPath],
+        lineChangeColors:[...lineChangeColors]
       });
       return;
     }
@@ -235,16 +234,16 @@ export const findAllRoutes2  = (graph, start, end, stationLines, maxDepth = 50) 
       
       // Create new path by appending this neighbor
       const newPath = [...path, neighbor];
+      const newColorPath = [...colorPath, stationLines[neighbor]]
       
       // Continue DFS
-      dfs(neighbor, newPath, newDistance, newVisited);
+      dfs(neighbor, newPath, newDistance, newVisited, newColorPath);
     }
   }
   
   // Start DFS from the start station
-  dfs(start, [start], 0, new Set([start]));
+  dfs(start, [start], 0, new Set([start]), [stationLines[start]]);
   
-  console.log(`Found ${allRoutes.length} routes`);
   
   // Sort routes by distance and then by number of interchanges
   allRoutes.sort((a, b) => {
@@ -257,7 +256,7 @@ export const findAllRoutes2  = (graph, start, end, stationLines, maxDepth = 50) 
   });
   let sortedBasedOnInterchanges = allRoutes ? allRoutes.sort((a, b) => a.interchanges - b.interchanges) : [];
   
-  return sortedBasedOnInterchanges?.slice(0,4)
+  return sortedBasedOnInterchanges?.slice(0,1)
 }
 
 // Example usage:

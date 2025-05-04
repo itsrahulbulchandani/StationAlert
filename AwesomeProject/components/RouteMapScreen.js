@@ -5,10 +5,10 @@ import {
   State,
 } from 'react-native-gesture-handler';
 import React, {useState, useRef, useEffect, useContext} from 'react';
-import {graph, colorLines} from './graph';
 import {
   StyleSheet,
   View,
+  Text,
 } from 'react-native';
 import RNFS from 'react-native-fs';
 import MapView, {Marker, Polyline} from 'react-native-maps';
@@ -17,16 +17,16 @@ import {
   findRoutesWithTransfers,
 } from '../utilities/helper';
 import CustomMarkerAnimated from './CustomMarkerAnimated';
-import {metroRoutes} from './metroRoutes';
+// import {metroRoutes} from './metroRoutes';
 import { TabContext } from '../App';
 
 // const {width, height} = Dimensions.get('window');
 
 // const SCALE_FACTOR = 2000;
-// const convertCoords = (lat, lon) => ({
-//   latitude: lat,
-//   longitude: lon,
-// });
+const convertCoords = (lat, lon) => ({
+  latitude: lat,
+  longitude: lon,
+});
 
 // const metroRoutes = {
 //   red: {
@@ -72,44 +72,44 @@ const RouteMapScreen = () => {
   const [translateX, setTranslateX] = useState(0);
   const [translateY, setTranslateY] = useState(0);
   const [shapes, setShapes] = useState({});
+  const [stations, setStations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stationsLoaded, setStationsLoaded] = useState(false);
   const [showMarkers, setShowMarkers] = useState(false);
   const [markerData, setMarkerData] = useState([]);
+  const [currentZoom, setCurrentZoom] = useState(10); // Default zoom level
   const { selectedRoute=[] } = useContext(TabContext);
-
-  console.log("testing the selected route",selectedRoute);
 
   const lastScale = useRef(1);
   const lastTranslateX = useRef(0);
   const lastTranslateY = useRef(0);
 
-  // const [shortestPath] = useState([]);
+  // Track if we're at max zoom level (18)
+  const isMaxZoom = currentZoom >= 18;
 
-  // // Call this function when user selects two stations
+  console.log("currentZoom",isMaxZoom, currentZoom,scale)
 
-  const onPanGestureEvent = ({nativeEvent}) => {
-    setTranslateX(lastTranslateX.current + nativeEvent.translationX);
-    setTranslateY(lastTranslateY.current + nativeEvent.translationY);
-  };
+  // const onPanGestureEvent = ({nativeEvent}) => {
+  //   setTranslateX(lastTranslateX.current + nativeEvent.translationX);
+  //   setTranslateY(lastTranslateY.current + nativeEvent.translationY);
+  // };
 
-  const onPanHandlerStateChange = ({nativeEvent}) => {
-    if (nativeEvent.oldState === State.ACTIVE) {
-      lastTranslateX.current = translateX;
-      lastTranslateY.current = translateY;
-    }
-  };
+  // const onPanHandlerStateChange = ({nativeEvent}) => {
+  //   if (nativeEvent.oldState === State.ACTIVE) {
+  //     lastTranslateX.current = translateX;
+  //     lastTranslateY.current = translateY;
+  //   }
+  // };
 
-  const onPinchGestureEvent = ({nativeEvent}) => {
-    setScale(lastScale.current * nativeEvent.scale);
-  };
+  // const onPinchGestureEvent = ({nativeEvent}) => {
+  //   setScale(lastScale.current * nativeEvent.scale);
+  // };
 
-  const onPinchHandlerStateChange = ({nativeEvent}) => {
-    if (nativeEvent.oldState === State.ACTIVE) {
-      lastScale.current = scale;
-    }
-  };
-
+  // const onPinchHandlerStateChange = ({nativeEvent}) => {
+  //   if (nativeEvent.oldState === State.ACTIVE) {
+  //     lastScale.current = scale;
+  //   }
+  // };
 
   // Function to parse shapes.txt file
   const parseShapesFile = async () => {
@@ -182,17 +182,17 @@ const RouteMapScreen = () => {
     }
   }, [stationsLoaded, loading, markerData]);
   // Station ID ranges for each line
-  // const routeRanges = {
-  //   red: {start: 1, end: 21},
-  //   blue: {start: 72, end: 121},
-  //   yellow: {start: 36, end: 71},
-  //   green: {start: 22, end: 35},
-  //   violet: {start: 122, end: 148},
-  //   pink: {start: 173, end: 218},
-  //   magenta: {start: 161, end: 172},
-  //   grey: {start: 239, end: 241},
-  //   orange: {start: 154, end: 157},
-  // };
+  const routeRanges = {
+    red: {start: 1, end: 21},
+    blue: {start: 72, end: 121},
+    yellow: {start: 36, end: 71},
+    green: {start: 22, end: 35},
+    violet: {start: 122, end: 148},
+    pink: {start: 173, end: 218},
+    magenta: {start: 161, end: 172},
+    grey: {start: 239, end: 241},
+    orange: {start: 154, end: 157},
+  };
 
   const parseStopsFile = async () => {
     try {
@@ -201,27 +201,35 @@ const RouteMapScreen = () => {
 
       const lines = fileContent.split('\n');
       let stops = [];
+      // let localStations = {}
       // Skip header row
       for (let i = 1; i < lines.length; i++) {
-        const [stop_id, , stop_name, , stop_lat, stop_lon] =
+        const [stop_id, , stop_name, , stop_lat, stop_lon, station_color, color_code, interchange] =
           lines[i].split(',');
         if (!stop_name || !stop_lat || !stop_lon) continue;
 
-        // const station = {
-        //   name: stop_name,
-        //   coords: convertCoords(parseFloat(stop_lat), parseFloat(stop_lon)),
-        // };
+        const station = {
+          id: parseInt(stop_id),
+          name: stop_name,
+          color: station_color,
+          color_code: color_code,
+          interchange: interchange,
+          coords: convertCoords(parseFloat(stop_lat), parseFloat(stop_lon)),
+        };
 
+        // localStations[stop_name] = {...station}
         const id = parseInt(stop_id);
-        stops.push(stop_name);
-        // Check each route's range and add the station if it falls within
+        stops.push(station);
+        //Check each route's range and add the station if it falls within
         // Object.entries(routeRanges).forEach(([routeName, range]) => {
         //   if (id >= range.start && id <= range.end) {
         //     metroRoutes[routeName].stations.push(station);
         //   }
         // });
       }
-      console.log("Parsed stops:", stops);
+      setStations(stops);
+      console.log(localStations)
+
     } catch (error) {
       console.error('Error reading stops file:', error);
     }
@@ -229,7 +237,7 @@ const RouteMapScreen = () => {
 
   const CustomMarker = ({
     color,
-    size = 8,
+    size = 2,
     borderWidth = 1,
     borderColor = '#FFFFFF',
   }) => {
@@ -256,6 +264,47 @@ const RouteMapScreen = () => {
     );
   };
 
+  // Modern interchange station marker with name
+  const InterchangeMarker = ({ name, color }) => {
+    return (
+      <View style={{
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        {!isMaxZoom && (
+          <Text style={{
+            color: '#000',
+            backgroundColor: 'rgba(255,255,255,0.85)',
+            fontSize: 10,
+            fontWeight: 'bold',
+            paddingHorizontal: 4,
+            paddingVertical: 2,
+            borderRadius: 3,
+            textAlign: 'center',
+            marginBottom: 3,
+            maxWidth: 90,
+            overflow: 'hidden',
+          }}>
+            {name}
+          </Text>
+        )}
+        <View style={{
+          width: 10,
+          height: 10,
+          borderRadius: 5,
+          backgroundColor: color,
+          borderWidth: 2,
+          borderColor: '#000',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.25,
+          shadowRadius: 2,
+          elevation: 4,
+        }} />
+      </View>
+    );
+  };
+
   // console.log("Animated Custom Marker", shortestPath)
 
   // const routeColors = {
@@ -270,18 +319,35 @@ const RouteMapScreen = () => {
   //   'orange-line': '#FFA500',
   // };
 
+  
+  const CameraZoomRange = {
+    minCenterCoordinateDistance: 10000, // Minimum distance (more zoomed in)
+    maxCenterCoordinateDistance: 60000, // Maximum distance (more zoomed out)
+    animated: true // Animate the change in zoom limits
+  };
+
+  // const onRegionChangeComplete = (region) => {
+  //   // Calculate an approximate scale value based on latitudeDelta
+  //   // Lower latitudeDelta = higher zoom = larger scale
+  //   const approximateScale = 1 / region.latitudeDelta * 100;
+  //   setScale(approximateScale.toFixed(2));
+  // };
+  
+  console.log("scale",scale)
+
   const TestMapScreen = () => {
     return (
       <GestureHandlerRootView style={{flex: 1}}>
-        <PinchGestureHandler
-          onGestureEvent={onPinchGestureEvent}
-          onHandlerStateChange={onPinchHandlerStateChange}>
-          <PanGestureHandler
-            onGestureEvent={onPanGestureEvent}
-            onHandlerStateChange={onPanHandlerStateChange}>
-            {/* {TestMapScreen()} */}
+        <PinchGestureHandler>
+          {/* // onGestureEvent={onPinchGestureEvent} */}
+          {/* // onHandlerStateChange={onPinchHandlerStateChange}> */}
+          <PanGestureHandler>
+            {/* // onGestureEvent={onPanGestureEvent} */}
+            {/* // onHandlerStateChange={onPanHandlerStateChange}> */}
             <MapView
               style={{flex: 1}}
+              cameraZoomRange={CameraZoomRange}
+              // onRegionChangeComplete={onRegionChangeComplete}
               initialRegion={{
                 latitude: 28.6139,
                 longitude: 77.209,
@@ -289,6 +355,19 @@ const RouteMapScreen = () => {
                 longitudeDelta: 0.4,
               }}>
               <>
+                <Marker
+                  key={"test"}
+                  coordinate={{
+                    latitude: 28.650059,
+                    longitude: 77.337608,}}
+                  title={"testing data"}
+                  style={{width:"200px"}}
+                  pinColor={"#fff"}>
+                    <CustomMarker
+                      size={4}
+                      borderWidth={0.5}
+                    />
+                </Marker>
                 {Object.entries(shapes).map(([shapeId, coordinates]) => (
                   <Polyline
                     key={shapeId}
@@ -297,34 +376,82 @@ const RouteMapScreen = () => {
                     strokeWidth={4}
                   />
                 ))}
-                {markerData.map(marker => (
-                  (selectedRoute && selectedRoute?.path?.length > 0 ?
-                    selectedRoute?.path?.includes(marker.title) ? <Marker
-                    key={marker.id}
-                    coordinate={marker.coordinate}
-                    title={marker.title}
-                    description={marker.description}
-                    pinColor={marker.color}>
-                      <CustomMarkerAnimated
-                        color={'#FF0000'}
-                        size={10} // Make it even smaller
-                        borderWidth={1} // Thinner border
-                      />
-                  </Marker>: null : <Marker
-                    key={marker.id}
-                    coordinate={marker.coordinate}
-                    title={marker.title}
-                    description={marker.description}
-                    pinColor={marker.color}>
+                {selectedRoute?.path && selectedRoute?.path?.length > 0 ? 
+                 (
+                  stations.map(marker =>{
+                    if (selectedRoute?.path?.some(
+                      p => p.toLowerCase().replace(/\s+/g, '') === marker.name.toLowerCase().replace(/\s+/g, '')
+                    )) {
+                      // Special handling for interchange stations only
+                      if (marker.interchange === "TRUE") {
+                        return (
+                          <Marker
+                            key={marker.id}
+                            coordinate={marker.coords}
+                            title={marker.name}
+                            anchor={{x: 0.5, y: 0.5}}>
+                            <InterchangeMarker
+                              name={marker.name}
+                              color={marker.color_code}
+                            />
+                          </Marker>
+                        );
+                      }
+
+                      // Keep existing behavior for all other stations
+                      let x = selectedRoute?.path?.indexOf(marker.name);
+                      return (
+                        <Marker
+                          key={marker.id}
+                          coordinate={marker.coords}
+                          title={marker.name}
+                          pinColor={(selectedRoute?.path?.indexOf(marker.name)==0 || selectedRoute?.path?.indexOf(marker.name)== selectedRoute?.path?.length-1) ? "#000000" : "#ffff"}>
+                            <CustomMarkerAnimated
+                              color={(selectedRoute?.path?.indexOf(marker.name)==0 || selectedRoute?.path?.indexOf(marker.name)== selectedRoute?.path?.length-1) ? "#000000" : "#ffff"}
+                              size={8}
+                              borderWidth={0.5}
+                              borderColor="#00000"
+                            />
+                        </Marker>
+                      );
+                    }
+                    return null;
+                  })
+                ) : 
+                stations.map(marker => {
+                  // Only modify interchange stations
+                  if (marker.interchange === "TRUE") {
+                    return (
+                      <Marker
+                        key={marker.id}
+                        coordinate={marker.coords}
+                        title={marker.name}
+                        anchor={{x: 0.5, y: 0.5}}>
+                        <InterchangeMarker
+                          name={marker.name}
+                          color={marker.color_code}
+                        />
+                      </Marker>
+                    );
+                  }
+                  
+                  // Keep existing behavior for all other stations
+                  return (
+                    <Marker
+                      key={marker.id}
+                      coordinate={marker.coords}
+                      title={marker.name}
+                      pinColor={marker.color_code}>
                       <CustomMarker
-                        color={marker.color}
-                        size={6} // Make it even smaller
-                        borderWidth={0.5} // Thinner border
+                        color={marker.color_code}
+                        size={6}
+                        borderWidth={0.5}
                       />
-                  </Marker>)
-                ))}
+                    </Marker>
+                  );
+                })
+                }
               </>
-              {/* )} */}
             </MapView>
           </PanGestureHandler>
         </PinchGestureHandler>
@@ -336,26 +463,27 @@ const RouteMapScreen = () => {
     if (stationsLoaded && !loading) {
       // Process your data into a format ready for markers
       const markers = [];
-      Object.entries(metroRoutes).forEach(([routeName, route]) => {
-        route.stations.forEach(station => {
-          markers.push({
-            id: `${station.name}`,
-            coordinate: station.coords,
-            title: station.name,
-            description: `${routeName.toUpperCase()} Line`,
-            color: route.color || 'red',
-          });
-        });
-      });
+      // Object.entries(metroRoutes).forEach(([routeName, route]) => {
+      //   route.stations.forEach(station => {
+      //     markers.push({
+      //       id: `${station.name}`,
+      //       coordinate: station.coords,
+      //       title: station.name,
+      //       description: `${routeName.toUpperCase()} Line`,
+      //       color: route.color || 'red',
+      //     });
+      //   });
+      // });
       // console.log("testing one two three",stationColor);
-      setMarkerData(markers);
+      setMarkerData(stations);
     }
-  }, [stationsLoaded, loading, metroRoutes]);
+  }, [stationsLoaded, loading]);
 
   return (
     <>
       <View style={styles.headerSpace} />
       {stationsLoaded && !loading && showMarkers && TestMapScreen()}
+      {/* {stationsLoaded && !loading && TestMapScreen()} */}
     </>
   );
 };

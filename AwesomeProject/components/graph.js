@@ -4,14 +4,14 @@
 //     },
 //     "Jhilmil": {
 //       "Dilshad Garden": 893.31,
-//       "Mansarovar Park": 1096.67
+//       "Mansrover Park": 1096.67
 //     },
-//     "Mansarovar Park": {
+//     "Mansrover Park": {
 //       "Jhilmil": 1096.67,
 //       "Shahdara": 1247.52
 //     },
 //     "Shahdara": {
-//       "Mansarovar Park": 1247.52,
+//       "Mansrover Park": 1247.52,
 //       "Welcome": 1123.45
 //     },
 //     "Welcome": {
@@ -888,14 +888,14 @@ let graph = {
   },
   "Jhilmil": {
       "Dilshad Garden": 893.31,
-      "Mansarovar Park": 1096.67
+      "Mansrover Park": 1096.67
   },
-  "Mansarovar Park": {
+  "Mansrover Park": {
       "Jhilmil": 1096.67,
       "Shahdara": 1247.52
   },
   "Shahdara": {
-      "Mansarovar Park": 1247.52,
+      "Mansrover Park": 1247.52,
       "Welcome": 1123.45
   },
   "Welcome": { 
@@ -2048,7 +2048,7 @@ let colorLines = {
   //Red Line
   "Dilshad Garden": "#CC0000",
   "Jhilmil": "#CC0000",
-  "Mansarovar Park": "#CC0000", //Added/Corrected Name
+  "Mansrover Park": "#CC0000", //Added/Corrected Name
   "Shahdara": "#CC0000",
   "Seelampur": "#CC0000", //Added/Corrected Name
   "Shastri Park": "#CC0000",

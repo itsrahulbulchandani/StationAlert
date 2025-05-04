@@ -57,8 +57,3 @@ const updatedShapesData = shapesData.map(line => {
 // Write the updated data back to shapes.txt
 fs.writeFileSync('shapes_with_colors.txt', updatedShapesData.join('\n'));
 
-// Log some statistics
-console.log('Processing complete!');
-console.log('Routes found:', Object.keys(routeColors).length);
-console.log('Shapes processed:', shapesData.length - 1); // -1 for header
-console.log('Shape to route mappings:', Object.keys(shapeToRoute).length);

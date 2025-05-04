@@ -24,6 +24,7 @@ target 'AwesomeProject' do
   )
 
   pod 'react-native-geolocation', :path => '../node_modules/@react-native-community/geolocation'
+  pod 'RNCPushNotificationIOS', :path => '../node_modules/@react-native-community/push-notification-ios'
 
   post_install do |installer|
     # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
