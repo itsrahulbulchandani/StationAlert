@@ -35,7 +35,7 @@ const stations = {
     "Shahdara": {
         "id": 4,
         "name": "Shahdara",
-        "color": "Red", 
+        "color": "Red",
         "color_code": "#FF0000",
         "interchange": "FALSE",
         "coords": {
@@ -164,9 +164,9 @@ const stations = {
             "longitude": 77.161774
         }
     },
-    "Netaji Subash Place": {
+    "Netaji Subhash Place": {
         "id": 16,
-        "name": "Netaji Subash Place",
+        "name": "Netaji Subhash Place",
         "color": "Black",
         "color_code": "#000000",
         "interchange": "TRUE",
@@ -747,9 +747,9 @@ const stations = {
             "longitude": 77.092995
         }
     },
-    "MG Road": {
+    "M G Road": {  // Changed from "MG Road"
         "id": 69,
-        "name": "MG Road",
+        "name": "M G Road",  // Changed from "MG Road"
         "color": "Yellow",
         "color_code": "#FFFF00",
         "interchange": "FALSE",
@@ -769,12 +769,12 @@ const stations = {
             "longitude": 77.072502
         }
     },
-    "Huda City Centre": {
+    "Millennium City Centre Gurugram": {
         "id": 71,
-        "name": "Huda City Centre",
+        "name": "Millennium City Centre Gurugram",
         "color": "Yellow",
         "color_code": "#FFFF00",
-        "interchange": "FALSE // Note: Name changed to Millennium City Centre Gurugram in source list",
+        "interchange": "FALSE",
         "coords": {
             "latitude": 28.459118,
             "longitude": 77.072586
@@ -802,9 +802,9 @@ const stations = {
             "longitude": 77.322273
         }
     },
-    "Anand Vihar": {
+    "Anand Vihar ISBT": {
         "id": 74,
-        "name": "Anand Vihar",
+        "name": "Anand Vihar ISBT",
         "color": "Black",
         "color_code": "#000000",
         "interchange": "TRUE",
@@ -857,9 +857,9 @@ const stations = {
             "longitude": 77.276428
         }
     },
-    "Noida City Centre": {
+    "Wave City Center Noida": {  // formerly Noida City Centre
         "id": 79,
-        "name": "Noida City Centre",
+        "name": "Wave City Center Noida",
         "color": "Blue",
         "color_code": "#0000FF",
         "interchange": "FALSE",
@@ -890,9 +890,9 @@ const stations = {
             "longitude": 77.334656
         }
     },
-    "Noida Sec -18": {
+    "Noida Sector 18": {
         "id": 82,
-        "name": "Noida Sec -18",
+        "name": "Noida Sector 18",
         "color": "Blue",
         "color_code": "#0000FF",
         "interchange": "FALSE",
@@ -901,9 +901,9 @@ const stations = {
             "longitude": 77.326088
         }
     },
-    "Noida Sec -16": {
+    "Noida Sector 16": {
         "id": 83,
-        "name": "Noida Sec -16",
+        "name": "Noida Sector 16",
         "color": "Blue",
         "color_code": "#0000FF",
         "interchange": "FALSE",
@@ -912,9 +912,9 @@ const stations = {
             "longitude": 77.318115
         }
     },
-    "Noida Sec -15": {
+    "Noida Sector 15": {
         "id": 84,
-        "name": "Noida Sec -15",
+        "name": "Noida Sector 15",
         "color": "Blue",
         "color_code": "#0000FF",
         "interchange": "FALSE",
@@ -934,9 +934,9 @@ const stations = {
             "longitude": 77.30146
         }
     },
-    "Mayur Vihar Ext": {
+    "Mayur Vihar Extension": {  // Changed from "Mayur Vihar Ext"
         "id": 86,
-        "name": "Mayur Vihar Ext",
+        "name": "Mayur Vihar Extension",
         "color": "Blue",
         "color_code": "#0000FF",
         "interchange": "FALSE",
@@ -945,9 +945,9 @@ const stations = {
             "longitude": 77.294495
         }
     },
-    "Mayur Vihar-I": {
+    "Mayur Vihar Phase 1": {  // Changed from "Mayur Vihar-I"
         "id": 87,
-        "name": "Mayur Vihar-I",
+        "name": "Mayur Vihar Phase 1",
         "color": "Black",
         "color_code": "#000000",
         "interchange": "TRUE",
@@ -970,9 +970,9 @@ const stations = {
     "Yamuna Bank": {
         "id": 89,
         "name": "Yamuna Bank",
-        "color": "Blue",
-        "color_code": "#0000FF",
-        "interchange": "FALSE // Note: Branch point",
+        "color": "Black",
+        "color_code": "#000000",
+        "interchange": "TRUE",
         "coords": {
             "latitude": 28.623178,
             "longitude": 77.267937
@@ -1022,9 +1022,9 @@ const stations = {
             "longitude": 77.224876
         }
     },
-    "RK Ashram Marg": {
+    "R K Ashram Marg": {  // Changed from "RK Ashram Marg"
         "id": 94,
-        "name": "RK Ashram Marg",
+        "name": "R K Ashram Marg",  // Changed from "RK Ashram Marg"
         "color": "Blue",
         "color_code": "#0000FF",
         "interchange": "FALSE",
@@ -1143,9 +1143,9 @@ const stations = {
             "longitude": 77.112747
         }
     },
-    "Subash Nagar": {
+    "Subash Nagar": {  // Changed from "Subash Nagar"
         "id": 105,
-        "name": "Subash Nagar",
+        "name": "Subash Nagar",  // Changed from "Subash Nagar"
         "color": "Blue",
         "color_code": "#0000FF",
         "interchange": "FALSE",
@@ -1550,9 +1550,9 @@ const stations = {
             "longitude": 77.308098
         }
     },
-    "Sector-28": {
+    "Sector 28": {  // Changed from "Sector-28"
         "id": 142,
-        "name": "Sector-28",
+        "name": "Sector 28",  // Changed from "Sector-28"
         "color": "Violet",
         "color_code": "#8A2BE2",
         "interchange": "FALSE",
@@ -1836,9 +1836,9 @@ const stations = {
             "longitude": 77.26487
         }
     },
-    "Phase-I (Rapid Metro)": {
+    "Phase 1 (Rapid Metro)": {  // Changed from "Phase-I (Rapid Metro)"
         "id": 168,
-        "name": "Phase-I (Rapid Metro)",
+        "name": "Phase 1 (Rapid Metro)",  // Changed from "Phase-I (Rapid Metro)"
         "color": "Rapid Metro",
         "color_code": "#C0C0C0",
         "interchange": "FALSE",
@@ -2089,9 +2089,9 @@ const stations = {
             "longitude": 77.140442
         }
     },
-    "Terminal 1- IGI Airport": {
+    "Terminal 1 - IGI Airport": {  // Changed from "Terminal 1- IGI Airport"
         "id": 191,
-        "name": "Terminal 1- IGI Airport",
+        "name": "Terminal 1 - IGI Airport",  // Changed from "Terminal 1- IGI Airport"
         "color": "Magenta",
         "color_code": "#FF00FF",
         "interchange": "FALSE",
@@ -2100,9 +2100,9 @@ const stations = {
             "longitude": 77.122391
         }
     },
-    "Sadar Bazar Contonment": {
+    "Sadar Bazar Cantonment": {  // Changed from "Sadar Bazar Contonment"
         "id": 192,
-        "name": "Sadar Bazar Contonment",
+        "name": "Sadar Bazar Cantonment",  // Changed from "Sadar Bazar Contonment"
         "color": "Magenta",
         "color_code": "#FF00FF",
         "interchange": "FALSE",
@@ -2155,9 +2155,9 @@ const stations = {
             "longitude": 76.989822
         }
     },
-    "Ghevra Metro station": {
+    "Ghevra Metro Station": {  // Changed from "Ghevra Metro station"
         "id": 197,
-        "name": "Ghevra Metro station",
+        "name": "Ghevra Metro Station",  // Changed from "Ghevra Metro station"
         "color": "Green",
         "color_code": "#008000",
         "interchange": "FALSE",
@@ -2210,9 +2210,9 @@ const stations = {
             "longitude": 76.935265
         }
     },
-    "Brigadier Hoshiyar Singh": {
+    "Brigadier Hoshiyar Singh": {  // Changed from "Brigadier Hoshiar Singh"
         "id": 202,
-        "name": "Brigadier Hoshiyar Singh",
+        "name": "Brigadier Hoshiyar Singh",  // Changed from "Brigadier Hoshiar Singh"
         "color": "Green",
         "color_code": "#008000",
         "interchange": "FALSE",
@@ -2276,9 +2276,9 @@ const stations = {
             "longitude": 77.308678
         }
     },
-    "East Vinod Nagar - Mayur Vihar-II": {
+    "East Vinod Nagar - Mayur Vihar Phase 2": {
         "id": 208,
-        "name": "East Vinod Nagar - Mayur Vihar-II",
+        "name": "East Vinod Nagar - Mayur Vihar Phase 2",
         "color": "Pink",
         "color_code": "#FFC0CB",
         "interchange": "FALSE",
@@ -2408,7 +2408,7 @@ const stations = {
             "longitude": 77.316261
         }
     },
-    "Raja Nahar Singh": {
+    "Raja Nahar Singh": {  // Keeping without "(Ballabhgarh)" as it's more commonly used
         "id": 220,
         "name": "Raja Nahar Singh",
         "color": "Violet",
@@ -2551,9 +2551,9 @@ const stations = {
             "longitude": 77.333809
         }
     },
-    "Noida Sec-34": {
+    "Noida Sector 34": {
         "id": 233,
-        "name": "Noida Sec-34",
+        "name": "Noida Sector 34",
         "color": "Blue",
         "color_code": "#0000FF",
         "interchange": "FALSE",
@@ -2562,20 +2562,20 @@ const stations = {
             "longitude": 77.363518
         }
     },
-    "Noida Sec-52": {
+    "Noida Sector 52": {
         "id": 234,
-        "name": "Noida Sec-52",
-        "color": "Blue",
-        "color_code": "#0000FF",
-        "interchange": "FALSE",
+        "name": "Noida Sector 52",
+        "color": "Black",  // Changed from Blue to Black
+        "color_code": "#000000",  // Changed from #0000FF to #000000
+        "interchange": "TRUE",  // Changed to TRUE as it's an interchange with Aqua line
         "coords": {
             "latitude": 28.586849,
             "longitude": 77.372749
         }
     },
-    "Noida Sec-61": {
+    "Noida Sector 61": {
         "id": 235,
-        "name": "Noida Sec-61",
+        "name": "Noida Sector 61",
         "color": "Blue",
         "color_code": "#0000FF",
         "interchange": "FALSE",
@@ -2584,9 +2584,9 @@ const stations = {
             "longitude": 77.372368
         }
     },
-    "Noida Sec-59": {
+    "Noida Sector 59": {
         "id": 236,
-        "name": "Noida Sec-59",
+        "name": "Noida Sector 59",
         "color": "Blue",
         "color_code": "#0000FF",
         "interchange": "FALSE",
@@ -2595,9 +2595,9 @@ const stations = {
             "longitude": 77.372955
         }
     },
-    "Noida Sec-62": {
+    "Noida Sector 62": {
         "id": 237,
-        "name": "Noida Sec-62",
+        "name": "Noida Sector 62",
         "color": "Blue",
         "color_code": "#0000FF",
         "interchange": "FALSE",

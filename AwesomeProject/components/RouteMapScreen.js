@@ -378,39 +378,43 @@ const RouteMapScreen = () => {
                 ))}
                 {selectedRoute?.path && selectedRoute?.path?.length > 0 ? 
                  (
-                  stations.map(marker =>{
-                    if (selectedRoute?.path?.some(
-                      p => p.toLowerCase().replace(/\s+/g, '') === marker.name.toLowerCase().replace(/\s+/g, '')
-                    )) {
+                  selectedRoute?.path?.map((marker,index) =>{
+                    let stationFound =stations?.find(
+                      p => marker.toLowerCase().replace(/\s+/g, '') === p.name.toLowerCase().replace(/\s+/g, '')
+                    )
+                    if (stationFound) {
                       // Special handling for interchange stations only
-                      if (marker.interchange === "TRUE") {
-                        return (
-                          <Marker
-                            key={marker.id}
-                            coordinate={marker.coords}
-                            title={marker.name}
-                            anchor={{x: 0.5, y: 0.5}}>
-                            <InterchangeMarker
-                              name={marker.name}
-                              color={marker.color_code}
-                            />
-                          </Marker>
-                        );
-                      }
+                      // if (marker.interchange === "TRUE") {
+                      //   return (
+                      //     <Marker
+                      //       key={marker.id}
+                      //       coordinate={marker.coords}
+                      //       title={marker.name}
+                      //       anchor={{x: 0.5, y: 0.5}}>
+                      //       <InterchangeMarker
+                      //         name={marker.name}
+                      //         color={marker.color_code}
+                      //       />
+                      //     </Marker>
+                      //   );
+                      // }
 
                       // Keep existing behavior for all other stations
                       let x = selectedRoute?.path?.indexOf(marker.name);
                       return (
                         <Marker
-                          key={marker.id}
-                          coordinate={marker.coords}
-                          title={marker.name}
-                          pinColor={(selectedRoute?.path?.indexOf(marker.name)==0 || selectedRoute?.path?.indexOf(marker.name)== selectedRoute?.path?.length-1) ? "#000000" : "#ffff"}>
+                          index={index}
+                          key={stationFound.id}
+                          coordinate={stationFound.coords}
+                          title={stationFound.name}
+                          pinColor={"#000000"}>
                             <CustomMarkerAnimated
-                              color={(selectedRoute?.path?.indexOf(marker.name)==0 || selectedRoute?.path?.indexOf(marker.name)== selectedRoute?.path?.length-1) ? "#000000" : "#ffff"}
-                              size={8}
-                              borderWidth={0.5}
-                              borderColor="#00000"
+                              color={"red"}
+                              size={12}
+                              borderWidth={2}
+                              borderColor="#000000"
+                              index={index}
+                              totalMarkers={selectedRoute?.path?.length || 1}
                             />
                         </Marker>
                       );

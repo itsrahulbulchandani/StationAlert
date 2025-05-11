@@ -32,50 +32,89 @@ const RouteSelection = ({onClose}) => {
         style={[styles.routeCard, isExpanded && styles.routeCardExpanded]}
         activeOpacity={0.9}>
         <View style={styles.routeCardHeader}>
-          <Text style={styles.routeCardTitle}>{item?.path[0]}</Text>
-          <View style={styles.routePillsRow}>
-            {item?.interChangeStations?.map((station, idx) => (
-              <View
-                key={idx}
-                style={[styles.stationPill, {backgroundColor: pastelColors[idx % pastelColors.length]}]}
-              >
-                <Text style={[styles.stationPillText, {color: item?.lineChangeColors[idx]}]}>{station}</Text>
+          <Text style={styles.routeCardTitle}>
+            {item?.path[0]} → {item?.path[item?.path?.length - 1]}
+          </Text>
+          
+          {/* Only show interchange stations if they exist */}
+          {item?.interChangeStations?.length > 0 ? (
+            <View style={styles.interchangeRow}>
+              <Text style={styles.interchangeLabel}>Interchanges:</Text>
+              <View style={styles.pillsContainer}>
+                {item?.interChangeStations?.map((station, idx) => (
+                  <View 
+                    key={idx}
+                    style={[styles.stationPill, {backgroundColor: pastelColors[(idx + 1) % pastelColors.length]}]}
+                  >
+                    <Text style={[styles.stationPillText, {color: item?.lineChangeColors[idx]}]}>{station}</Text>
+                  </View>
+                ))}
               </View>
-            ))}
-            {item?.interChangeStations[item?.interChangeStations?.length - 1] !== item?.path[item?.path?.length - 1] && (
-              <View style={[styles.stationPill, {backgroundColor: pastelColors[3]}]}>
-                <Text style={[styles.stationPillText, {color: item?.colorPath[item?.colorPath?.length - 1]}]}>
-                  {item?.path[item?.path?.length - 1]}
-                </Text>
-              </View>
-            )}
+            </View>
+          ) : (
+            <Text style={styles.directRouteText}>Direct Route</Text>
+          )}
+          
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => {
+                setSelectedRoute(item);
+                setActiveTab('route');
+              }}>
+              <Text style={styles.primaryButtonText}>View On Map</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.secondaryButton} onPress={() => handleSetAlert(item)}>
+              <Text style={styles.secondaryButtonText}>Set Alerts</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.tapHintContainer}>
+            <Text style={styles.tapHintText}>
+              {isExpanded ? 'Hide full route' : 'Tap to see full route'}
+            </Text>
           </View>
         </View>
         {isExpanded && (
           <View style={styles.expandedContent}>
             <Text style={styles.sectionTitle}>Full Route</Text>
-            <View style={styles.pathRow}>
-              {item.path?.map((station, idx) => (
-                <React.Fragment key={idx}>
-                  <View style={[styles.stationPillLarge, {backgroundColor: pastelColors[idx % pastelColors.length]}]}>
-                    <Text style={[styles.stationPillTextLarge, {color: item?.colorPath[idx]}]}>{station}</Text>
+            <View style={styles.routeListContainer}>
+              {item.path?.map((station, idx) => {
+                // Check if this station is an interchange station
+                const isInterchange = item?.interChangeStations?.includes(station);
+                
+                return (
+                  <View key={idx} style={styles.routeListItem}>
+                    <View 
+                      style={[
+                        styles.stationDot,
+                        isInterchange ? styles.interchangeDot : null,
+                        {backgroundColor: idx == 0 || idx == item?.path?.length - 1 ? "#000000" : (isInterchange ? "" : item?.colorPath[idx])}
+                      ]}
+                    />
+                    <View style={styles.stationLineContainer}>
+                      <View style={styles.stationNameRow}>
+                        <Text style={[
+                          styles.stationName,
+                          isInterchange && styles.interchangeStationName
+                        ]}>
+                          {station}
+                        </Text>
+                        
+                        {isInterchange && (
+                          <View style={styles.interchangePill}>
+                            <Text style={styles.interchangePillText}>Interchange</Text>
+                          </View>
+                        )}
+                      </View>
+                      
+                      {idx < item.path.length - 1 && (
+                        <View style={[styles.connectionLine, {backgroundColor: item?.colorPath[idx]!="interchange" ? item?.colorPath[idx] : idx+1 <= item?.colorPath?.length-1 ? item?.colorPath[idx+1] : "#000000"}]} />
+                      )}
+                    </View>
                   </View>
-                  {idx !== item?.path?.length - 1 && <Text style={styles.arrowLarge}>→</Text>}
-                </React.Fragment>
-              ))}
-            </View>
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                style={styles.primaryButton}
-                onPress={() => {
-                  setSelectedRoute(item);
-                  setActiveTab('route');
-                }}>
-                <Text style={styles.primaryButtonText}>View On Map</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => handleSetAlert(item)}>
-                <Text style={styles.secondaryButtonText}>Set Alerts</Text>
-              </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         )}
@@ -171,23 +210,33 @@ const styles = StyleSheet.create({
     color: '#222B45',
     marginBottom: 10,
   },
-  routePillsRow: {
+  interchangeRow: {
+    marginTop: 4,
+  },
+  interchangeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FF9800',
+    marginRight: 8,
+  },
+  pillsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 8,
+    marginTop: 6,
   },
-  stationPill: {
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    marginRight: 8,
-    marginBottom: 6,
-    backgroundColor: '#E0F7FA',
+  directRouteText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    color: '#7B8794',
   },
-  stationPillText: {
-    fontSize: 15,
-    fontWeight: '600',
+  tapHintContainer: {
+    marginTop: 10,
+    alignItems: 'flex-end',
+  },
+  tapHintText: {
+    fontSize: 12,
+    color: '#8F9BB3',
+    fontStyle: 'italic',
   },
   expandedContent: {
     marginTop: 18,
@@ -199,13 +248,81 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#7B8794',
-    marginBottom: 10,
+    marginBottom: 16,
+  },
+  routeListContainer: {
+    marginBottom: 16,
+  },
+  routeListItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  stationDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginTop: 4,
+    marginRight: 12,
+  },
+  stationLineContainer: {
+    flex: 1,
+  },
+  stationName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#222B45',
+    marginBottom: 2,
+  },
+  interchangeStationName: {
+    fontWeight: '700',
+  },
+  stationNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  interchangeDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#FF9800',
+  },
+  interchangePill: {
+    backgroundColor: '#FF9800',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 8,
+  },
+  interchangePillText: {
+    color: 'white',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  connectionLine: {
+    height: 24,
+    width: 2,
+    marginLeft: 5,
   },
   pathRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
     marginBottom: 18,
+  },
+  stationPill: {
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    marginVertical: 4,
+    position: 'relative',
+    backgroundColor: '#E0F7FA',
+  },
+  stationPillText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   stationPillLarge: {
     borderRadius: 18,
@@ -228,7 +345,7 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
+    marginTop: 24,
     gap: 12,
   },
   primaryButton: {

@@ -1,887 +1,3 @@
-// let graph = {
-//     "Dilshad Garden": {
-//       "Jhilmil": 893.31
-//     },
-//     "Jhilmil": {
-//       "Dilshad Garden": 893.31,
-//       "Mansrover Park": 1096.67
-//     },
-//     "Mansrover Park": {
-//       "Jhilmil": 1096.67,
-//       "Shahdara": 1247.52
-//     },
-//     "Shahdara": {
-//       "Mansrover Park": 1247.52,
-//       "Welcome": 1123.45
-//     },
-//     "Welcome": {
-//       "Shahdara": 1123.45,
-//       "Seelampur": 1352.87
-//     },
-//     "Seelampur": {
-//       "Welcome": 1352.87,
-//       "Shastri Park": 1475.32
-//     },
-//     "Shastri Park": {
-//       "Seelampur": 1475.32,
-//       "Kashmere Gate": 2217.64
-//     },
-//     "Kashmere Gate": {
-//       "Shastri Park": 2217.64,
-//       "Chandni Chowk": 1456.78,
-//       "Civil Lines": 1687.54,
-//       "Lal Quila": 1243.56
-//     },
-//     "Chandni Chowk": {
-//       "Kashmere Gate": 1456.78,
-//       "Chawri Bazar": 1023.45
-//     },
-//     "Chawri Bazar": {
-//       "Chandni Chowk": 1023.45,
-//       "New Delhi": 1198.76
-//     },
-//     "New Delhi": {
-//       "Chawri Bazar": 1198.76,
-//       "Rajiv Chowk": 876.54,
-//       "Shivaji Stadium": 2134.67,
-//       "Airport Express": 0
-//     },
-//     "Rajiv Chowk": {
-//       "New Delhi": 876.54,
-//       "Patel Chowk": 1321.43,
-//       "Barakhamba": 945.78,
-//       "Janpath": 1087.65,
-//       "Karol Bagh": 1543.21
-//     },
-//     "Patel Chowk": {
-//       "Rajiv Chowk": 1321.43,
-//       "Central Secretariat": 864.32
-//     },
-//     "Central Secretariat": {
-//       "Patel Chowk": 864.32,
-//       "Udyog Bhawan": 765.43,
-//       "Khan Market": 1654.32,
-//       "Janpath": 1132.87
-//     },
-//     "Udyog Bhawan": {
-//       "Central Secretariat": 765.43,
-//       "Lok Kalyan Marg": 1543.21
-//     },
-//     "Lok Kalyan Marg": {
-//       "Udyog Bhawan": 1543.21,
-//       "Jorbagh": 1234.56
-//     },
-//     "Jorbagh": {
-//       "Lok Kalyan Marg": 1234.56,
-//       "Dilli Haat - INA": 1432.10
-//     },
-//     "Dilli Haat - INA": {
-//       "Jorbagh": 1432.10,
-//       "AIIMS": 987.65,
-//       "Sarojini Nagar": 1243.76,
-//       "South Extension": 1176.43
-//     },
-//     "AIIMS": {
-//       "Dilli Haat - INA": 987.65,
-//       "Green Park": 1165.43
-//     },
-//     "Green Park": {
-//       "AIIMS": 1165.43,
-//       "Hauz Khas": 1387.65
-//     },
-//     "Hauz Khas": {
-//       "Green Park": 1387.65,
-//       "Malviya Nagar": 1243.21,
-//       "IIT Delhi": 1765.43,
-//       "R.K. Puram": 1532.76
-//     },
-//     "Malviya Nagar": {
-//       "Hauz Khas": 1243.21,
-//       "Saket": 1387.65
-//     },
-//     "Saket": {
-//       "Malviya Nagar": 1387.65,
-//       "Qutab Minar": 1498.76
-//     },
-//     "Qutab Minar": {
-//       "Saket": 1498.76,
-//       "Chhattarpur": 1765.43
-//     },
-//     "Chhattarpur": {
-//       "Qutab Minar": 1765.43,
-//       "Sultanpur": 1354.32
-//     },
-//     "Sultanpur": {
-//       "Chhattarpur": 1354.32,
-//       "Ghitorni": 1876.54
-//     },
-//     "Ghitorni": {
-//       "Sultanpur": 1876.54,
-//       "Arjan Garh": 1432.10
-//     },
-//     "Arjan Garh": {
-//       "Ghitorni": 1432.10,
-//       "Gurudronacharya": 1565.43
-//     },
-//     "Gurudronacharya": {
-//       "Arjan Garh": 1565.43,
-//       "Sikanderpur": 1287.65
-//     },
-//     "Sikanderpur": {
-//       "Gurudronacharya": 1287.65,
-//       "MG Road": 1354.32,
-//       "Phase 2": 1432.10,
-//       "Sector 53-54": 1254.32,
-//       "Phase 1": 987.65
-//     },
-//     "MG Road": {
-//       "Sikanderpur": 1354.32,
-//       "IFFCO Chowk": 1765.43
-//     },
-//     "IFFCO Chowk": {
-//       "MG Road": 1765.43,
-//       "Huda City Centre": 2165.43
-//     },
-//     "Huda City Centre": {
-//       "IFFCO Chowk": 2165.43
-//     },
-//     "Civil Lines": {
-//       "Kashmere Gate": 1687.54,
-//       "Vidhan Sabha": 1243.21
-//     },
-//     "Vidhan Sabha": {
-//       "Civil Lines": 1243.21,
-//       "Vishwavidyalaya": 986.54
-//     },
-//     "Vishwavidyalaya": {
-//       "Vidhan Sabha": 986.54,
-//       "GTB Nagar": 1176.54
-//     },
-//     "GTB Nagar": {
-//       "Vishwavidyalaya": 1176.54,
-//       "Model Town": 1243.21
-//     },
-//     "Model Town": {
-//       "GTB Nagar": 1243.21,
-//       "Adarsh Nagar": 1432.10
-//     },
-//     "Adarsh Nagar": {
-//       "Model Town": 1432.10,
-//       "Jahangirpuri": 1398.76
-//     },
-//     "Jahangirpuri": {
-//       "Adarsh Nagar": 1398.76,
-//       "Haiderpur Badli Mor": 1765.43
-//     },
-//     "Haiderpur Badli Mor": {
-//       "Jahangirpuri": 1765.43,
-//       "Samaypur Badli": 1932.10
-//     },
-//     "Samaypur Badli": {
-//       "Haiderpur Badli Mor": 1932.10
-//     },
-//     "Barakhamba": {
-//       "Rajiv Chowk": 945.78,
-//       "Mandi House": 1132.10
-//     },
-//     "Mandi House": {
-//       "Barakhamba": 1132.10,
-//       "Janpath": 1087.65,
-//       "Pragati Maidan": 1354.32,
-//       "Supreme Court": 1243.21
-//     },
-//     "Janpath": {
-//       "Mandi House": 1087.65,
-//       "Khan Market": 1243.21,
-//       "Central Secretariat": 1132.87
-//     },
-//     "Khan Market": {
-//       "Central Secretariat": 1654.32,
-//       "Janpath": 1243.21,
-//       "JLN Stadium": 1765.43
-//     },
-//     "JLN Stadium": {
-//       "Khan Market": 1765.43,
-//       "Jangpura": 1398.76
-//     },
-//     "Jangpura": {
-//       "JLN Stadium": 1398.76,
-//       "Lajpat Nagar": 1554.32
-//     },
-//     "Lajpat Nagar": {
-//       "Jangpura": 1554.32,
-//       "Moolchand": 1243.21,
-//       "Vinobapuri": 1432.10,
-//       "South Extension": 1321.54
-//     },
-//     "Moolchand": {
-//       "Lajpat Nagar": 1243.21,
-//       "Kailash Colony": 1354.32
-//     },
-//     "Kailash Colony": {
-//       "Moolchand": 1354.32,
-//       "Nehru Place": 1176.54
-//     },
-//     "Nehru Place": {
-//       "Kailash Colony": 1176.54,
-//       "Kalkaji Mandir": 1432.10
-//     },
-//     "Kalkaji Mandir": {
-//       "Nehru Place": 1432.10,
-//       "Govind Puri": 1265.43,
-//       "Okhla NSIC": 1654.32,
-//       "Okhla Bird Sanctuary": 2143.76
-//     },
-//     "Govind Puri": {
-//       "Kalkaji Mandir": 1265.43,
-//       "Jasola Apollo": 1487.65
-//     },
-//     "Jasola Apollo": {
-//       "Govind Puri": 1487.65,
-//       "Sarita Vihar": 1798.76
-//     },
-//     "Sarita Vihar": {
-//       "Jasola Apollo": 1798.76,
-//       "Mohan Estate": 1543.21
-//     },
-//     "Mohan Estate": {
-//       "Sarita Vihar": 1543.21,
-//       "Tughlakabad": 1687.65
-//     },
-//     "Tughlakabad": {
-//       "Mohan Estate": 1687.65,
-//       "Badarpur": 1765.43
-//     },
-//     "Badarpur": {
-//       "Tughlakabad": 1765.43,
-//       "Sarai": 1432.10
-//     },
-//     "Sarai": {
-//       "Badarpur": 1432.10,
-//       "NHPC Chowk": 1654.32
-//     },
-//     "NHPC Chowk": {
-//       "Sarai": 1654.32,
-//       "Mewala Maharajpur": 1487.65
-//     },
-//     "Mewala Maharajpur": {
-//       "NHPC Chowk": 1487.65,
-//       "Sector 28": 1354.32
-//     },
-//     "Sector 28": {
-//       "Mewala Maharajpur": 1354.32,
-//       "Ballabhgarh": 1876.54
-//     },
-//     "Ballabhgarh": {
-//       "Sector 28": 1876.54
-//     },
-//     "Pragati Maidan": {
-//       "Mandi House": 1354.32,
-//       "Indraprastha": 1432.10
-//     },
-//     "Indraprastha": {
-//       "Pragati Maidan": 1432.10,
-//       "Yamuna Bank": 2176.54
-//     },
-//     "Yamuna Bank": {
-//       "Indraprastha": 2176.54,
-//       "Akshardham": 1765.43,
-//       "Laxmi Nagar": 1354.32
-//     },
-//     "Akshardham": {
-//       "Yamuna Bank": 1765.43,
-//       "Mayur Vihar Phase 1": 2098.76
-//     },
-//     "Mayur Vihar Phase 1": {
-//       "Akshardham": 2098.76,
-//       "Mayur Vihar Extension": 1187.65
-//     },
-//     "Mayur Vihar Extension": {
-//       "Mayur Vihar Phase 1": 1187.65,
-//       "New Ashok Nagar": 1354.32
-//     },
-//     "New Ashok Nagar": {
-//       "Mayur Vihar Extension": 1354.32,
-//       "Noida Sector 15": 1765.43
-//     },
-//     "Noida Sector 15": {
-//       "New Ashok Nagar": 1765.43,
-//       "Noida Sector 16": 1243.21
-//     },
-//     "Noida Sector 16": {
-//       "Noida Sector 15": 1243.21,
-//       "Noida Sector 18": 1432.10
-//     },
-//     "Noida Sector 18": {
-//       "Noida Sector 16": 1432.10,
-//       "Botanical Garden": 1543.21
-//     },
-//     "Botanical Garden": {
-//       "Noida Sector 18": 1543.21,
-//       "Golf Course": 1354.32,
-//       "Kalindi Kunj": 2176.54
-//     },
-//     "Golf Course": {
-//       "Botanical Garden": 1354.32,
-//       "Noida City Centre": 1632.10
-//     },
-//     "Noida City Centre": {
-//       "Golf Course": 1632.10,
-//       "Noida Sector 34": 1432.10
-//     },
-//     "Noida Sector 34": {
-//       "Noida City Centre": 1432.10,
-//       "Noida Sector 52": 1765.43
-//     },
-//     "Noida Sector 52": {
-//       "Noida Sector 34": 1765.43,
-//       "Noida Sector 61": 1243.21
-//     },
-//     "Noida Sector 61": {
-//       "Noida Sector 52": 1243.21,
-//       "Noida Sector 59": 1132.10
-//     },
-//     "Noida Sector 59": {
-//       "Noida Sector 61": 1132.10,
-//       "Noida Sector 62": 1265.43
-//     },
-//     "Noida Sector 62": {
-//       "Noida Sector 59": 1265.43,
-//       "Noida Electronic City": 1543.21
-//     },
-//     "Noida Electronic City": {
-//       "Noida Sector 62": 1543.21
-//     },
-//     "Laxmi Nagar": {
-//       "Yamuna Bank": 1354.32,
-//       "Nirman Vihar": 1243.21
-//     },
-//     "Nirman Vihar": {
-//       "Laxmi Nagar": 1243.21,
-//       "Preet Vihar": 1132.10
-//     },
-//     "Preet Vihar": {
-//       "Nirman Vihar": 1132.10,
-//       "Karkarduma": 1354.32
-//     },
-//     "Karkarduma": {
-//       "Preet Vihar": 1354.32,
-//       "Anand Vihar ISBT": 1765.43,
-//       "Karkarduma Court": 1243.21
-//     },
-//     "Anand Vihar ISBT": {
-//       "Karkarduma": 1765.43,
-//       "Kaushambi": 1354.32
-//     },
-//     "Kaushambi": {
-//       "Anand Vihar ISBT": 1354.32,
-//       "Vaishali": 1543.21
-//     },
-//     "Vaishali": {
-//       "Kaushambi": 1543.21
-//     },
-//     "Karkarduma Court": {
-//       "Karkarduma": 1243.21,
-//       "Krishna Nagar": 1132.10
-//     },
-//     "Krishna Nagar": {
-//       "Karkarduma Court": 1132.10,
-//       "East Azad Nagar": 1087.65
-//     },
-//     "East Azad Nagar": {
-//       "Krishna Nagar": 1087.65,
-//       "Welcome": 1243.21
-//     },
-//     "Karol Bagh": {
-//       "Rajiv Chowk": 1543.21,
-//       "Jhandewalan": 1132.10
-//     },
-//     "Jhandewalan": {
-//       "Karol Bagh": 1132.10,
-//       "R K Ashram Marg": 1354.32
-//     },
-//     "R K Ashram Marg": {
-//       "Jhandewalan": 1354.32,
-//       "Patel Nagar": 1765.43
-//     },
-//     "Patel Nagar": {
-//       "R K Ashram Marg": 1765.43,
-//       "Shadipur": 1243.21
-//     },
-//     "Shadipur": {
-//       "Patel Nagar": 1243.21,
-//       "Kirti Nagar": 1354.32
-//     },
-//     "Kirti Nagar": {
-//       "Shadipur": 1354.32,
-//       "Moti Nagar": 1132.10,
-//       "Satguru Ram Singh Marg": 1243.21
-//     },
-//     "Moti Nagar": {
-//       "Kirti Nagar": 1132.10,
-//       "Ramesh Nagar": 1087.65
-//     },
-//     "Ramesh Nagar": {
-//       "Moti Nagar": 1087.65,
-//       "Rajouri Garden": 1354.32
-//     },
-//     "Rajouri Garden": {
-//       "Ramesh Nagar": 1354.32,
-//       "Tagore Garden": 1243.21,
-//       "Mayapuri": 1432.10
-//     },
-//     "Tagore Garden": {
-//       "Rajouri Garden": 1243.21,
-//       "Subhash Nagar": 1132.10
-//     },
-//     "Subhash Nagar": {
-//       "Tagore Garden": 1132.10,
-//       "Tilak Nagar": 1087.65
-//     },
-//     "Tilak Nagar": {
-//       "Subhash Nagar": 1087.65,
-//       "Janakpuri East": 1354.32
-//     },
-//     "Janakpuri East": {
-//       "Tilak Nagar": 1354.32,
-//       "Janakpuri West": 1243.21
-//     },
-//     "Janakpuri West": {
-//       "Janakpuri East": 1243.21,
-//       "Uttam Nagar East": 1432.10,
-//       "Dabri Mor": 1876.54
-//     },
-//     "Uttam Nagar East": {
-//       "Janakpuri West": 1432.10,
-//       "Uttam Nagar West": 1087.65
-//     },
-//     "Uttam Nagar West": {
-//       "Uttam Nagar East": 1087.65,
-//       "Nawada": 1354.32
-//     },
-//     "Nawada": {
-//       "Uttam Nagar West": 1354.32,
-//       "Dwarka Mor": 1543.21
-//     },
-//     "Dwarka Mor": {
-//       "Nawada": 1543.21,
-//       "Dwarka": 1765.43,
-//       "Nangli": 1432.10
-//     },
-//     "Dwarka": {
-//       "Dwarka Mor": 1765.43,
-//       "Dwarka Sector 14": 1243.21
-//     },
-//     "Dwarka Sector 14": {
-//       "Dwarka": 1243.21,
-//       "Dwarka Sector 13": 1132.10
-//     },
-//     "Dwarka Sector 13": {
-//       "Dwarka Sector 14": 1132.10,
-//       "Dwarka Sector 12": 1087.65
-//     },
-//     "Dwarka Sector 12": {
-//       "Dwarka Sector 13": 1087.65,
-//       "Dwarka Sector 11": 1354.32
-//     },
-//     "Dwarka Sector 11": {
-//       "Dwarka Sector 12": 1354.32,
-//       "Dwarka Sector 10": 1243.21
-//     },
-//     "Dwarka Sector 10": {
-//       "Dwarka Sector 11": 1243.21,
-//       "Dwarka Sector 9": 1132.10
-//     },
-//     "Dwarka Sector 9": {
-//       "Dwarka Sector 10": 1132.10,
-//       "Dwarka Sector 8": 1087.65
-//     },
-//     "Dwarka Sector 8": {
-//       "Dwarka Sector 9": 1087.65,
-//       "Dwarka Sector 21": 1543.21
-//     },
-//     "Dwarka Sector 21": {
-//       "Dwarka Sector 8": 1543.21,
-//       "Airport Express": 0
-//     },
-//     "Nangli": {
-//       "Dwarka Mor": 1432.10,
-//       "Najafgarh": 1876.54
-//     },
-//     "Najafgarh": {
-//       "Nangli": 1876.54,
-//       "Dhansa Bus Stand": 1243.21
-//     },
-//     "Dhansa Bus Stand": {
-//       "Najafgarh": 1243.21
-//     },
-//     "Airport Express": {
-//       "New Delhi": 0,
-//       "Shivaji Stadium": 1543.21
-//     },
-//     "Shivaji Stadium": {
-//       "New Delhi": 2134.67,
-//       "Airport Express": 1543.21,
-//       "Dhaula Kuan": 2765.43
-//     },
-//     "Dhaula Kuan": {
-//       "Shivaji Stadium": 2765.43,
-//       "Delhi Aerocity": 3187.65,
-//       "Durgabai Deshmukh South Campus": 1643.21
-//     },
-//     "Delhi Aerocity": {
-//       "Dhaula Kuan": 3187.65,
-//       "IGI Airport": 2876.54
-//     },
-//     "IGI Airport": {
-//       "Delhi Aerocity": 2876.54,
-//       "Dwarka Sector 21": 3432.10
-//     },
-//     "Lal Quila": {
-//       "Kashmere Gate": 1243.56,
-//       "Jama Masjid": 1087.65
-//     },
-//     "Jama Masjid": {
-//       "Lal Quila": 1087.65,
-//       "Delhi Gate": 1354.32
-//     },
-//     "Delhi Gate": {
-//       "Jama Masjid": 1354.32,
-//       "ITO": 1243.21
-//     },
-//     "ITO": {
-//       "Delhi Gate": 1243.21,
-//       "Mandi House": 1132.10
-//     },
-//     "Supreme Court": {
-//       "Mandi House": 1243.21,
-//       "Indraprastha": 1354.32
-//     },
-//     "Mayapuri": {
-//       "Rajouri Garden": 1432.10,
-//       "Naraina Vihar": 1354.32
-//     },
-//     "Naraina Vihar": {
-//       "Mayapuri": 1354.32,
-//       "Delhi Cantt": 1765.43
-//     },
-//     "Delhi Cantt": {
-//       "Naraina Vihar": 1765.43,
-//       "Durgabai Deshmukh South Campus": 1543.21
-//     },
-//     "Durgabai Deshmukh South Campus": {
-//       "Delhi Cantt": 1543.21,
-//       "Dhaula Kuan": 1643.21,
-//       "Sir Vishweshwaraiah Moti Bagh": 1354.32
-//     },
-//     "Sir Vishweshwaraiah Moti Bagh": {
-//       "Durgabai Deshmukh South Campus": 1354.32,
-//       "Bhikaji Cama Place": 1432.10
-//     },
-//     "Bhikaji Cama Place": {
-//       "Sir Vishweshwaraiah Moti Bagh": 1432.10,
-//       "Sarojini Nagar": 1243.21
-//     },
-//     "Sarojini Nagar": {
-//       "Bhikaji Cama Place": 1243.21,
-//       "Dilli Haat - INA": 1243.76
-//     },
-//     "South Extension": {
-//       "Dilli Haat - INA": 1176.43,
-//       "Lajpat Nagar": 1321.54
-//     },
-//     "Vinobapuri": {
-//       "Lajpat Nagar": 1432.10,
-//       "Ashram": 1243.21
-//     },
-//     "Ashram": {
-//       "Vinobapuri": 1243.21,
-//       "Sarai Kale Khan": 1432.10
-//     },
-//     "Sarai Kale Khan": {
-//       "Ashram": 1432.10,
-//       "Hazrat Nizamuddin": 1354.32
-//     },
-//     "Hazrat Nizamuddin": {
-//       "Sarai Kale Khan": 1354.32,
-//       "Mayur Vihar Phase 1": 2187.65
-//     },
-//     "IIT Delhi": {
-//       "Hauz Khas": 1765.43,
-//       "Panchsheel Park": 1354.32
-//     },
-//     "Panchsheel Park": {
-//       "IIT Delhi": 1354.32,
-//       "Chirag Delhi": 1243.21
-//     },
-//     "Chirag Delhi": {
-//       "Panchsheel Park": 1243.21,
-//       "Greater Kailash": 1354.32
-//     },
-//     "Greater Kailash": {
-//       "Chirag Delhi": 1354.32,
-//       "Nehru Enclave": 1243.21
-//     },
-//     "Nehru Enclave": {
-//       "Greater Kailash": 1243.21,
-//       "Kalkaji Mandir": 1432.10
-//     },
-//     "Okhla NSIC": {
-//       "Kalkaji Mandir": 1654.32,
-//       "Sukhdev Vihar": 1354.32
-//     },
-//     "Sukhdev Vihar": {
-//       "Okhla NSIC": 1354.32,
-//       "Jamia Millia Islamia": 1243.21
-//     },
-//     "Jamia Millia Islamia": {
-//       "Sukhdev Vihar": 1243.21,
-//       "Okhla Bird Sanctuary": 1654.32
-//     },
-//     "Okhla Bird Sanctuary": {
-//       "Jamia Millia Islamia": 1654.32,
-//       "Kalkaji Mandir": 2143.76,
-//       "Kalindi Kunj": 1354.32
-//     },
-//     "Kalindi Kunj": {
-//       "Okhla Bird Sanctuary": 1354.32,
-//       "Botanical Garden": 2176.54
-//     },
-//     "Dabri Mor": {
-//       "Janakpuri West": 1876.54,
-//       "Dashrath Puri": 1354.32
-//     },
-//     "Dashrath Puri": {
-//       "Dabri Mor": 1354.32,
-//       "Palam": 1432.10
-//     },
-//     "Palam": {
-//       "Dashrath Puri": 1432.10,
-//       "Sadar Bazaar Cantonment": 1543.21
-//     },
-//     "Sadar Bazaar Cantonment": {
-//       "Palam": 1543.21,
-//       "Terminal 1 IGI Airport": 1876.54
-//     },
-//     "Terminal 1 IGI Airport": {
-//       "Sadar Bazaar Cantonment": 1876.54,
-//       "Shankar Vihar": 2143.21
-//     },
-//     "Shankar Vihar": {
-//       "Terminal 1 IGI Airport": 2143.21,
-//       "Vasant Vihar": 1654.32
-//     },
-//     "Vasant Vihar": {
-//       "Shankar Vihar": 1654.32,
-//       "Munirka": 1243.21
-//     },
-//     "Munirka": {
-//       "Vasant Vihar": 1243.21,
-//       "R.K. Puram": 1354.32
-//     },
-//     "R.K. Puram": {
-//       "Munirka": 1354.32,
-//       "Hauz Khas": 1532.76
-//     },
-//     "Satguru Ram Singh Marg": {
-//       "Kirti Nagar": 1243.21,
-//       "Inderlok": 1432.10
-//     },
-//     "Inderlok": {
-//       "Kanhaiya Nagar": 1432.10,
-//       "Ashok Park Main": 1243.21,
-//       "Shastri Nagar": 1354.32
-//     },
-//     "Ashok Park Main": {
-//       "Inderlok": 1243.21,
-//       "Punjabi Bagh": 1543.21,
-//       "Satguru Ram Singh Marg": 1432.10
-//     },
-//     "Punjabi Bagh": {
-//       "Ashok Park Main": 1543.21,
-//       "Shivaji Park": 1243.21
-//     },
-//     "Shivaji Park": {
-//       "Punjabi Bagh": 1243.21,
-//       "Madipur": 1087.65
-//     },
-//     "Madipur": {
-//       "Shivaji Park": 1087.65,
-//       "Paschim Vihar East": 1354.32
-//     },
-//     "Paschim Vihar East": {
-//       "Madipur": 1354.32,
-//       "Paschim Vihar West": 1243.21
-//     },
-//     "Paschim Vihar West": {
-//       "Paschim Vihar East": 1243.21,
-//       "Peera Garhi": 1432.10
-//     },
-//     "Peera Garhi": {
-//       "Paschim Vihar West": 1432.10,
-//       "Udyog Nagar": 1243.21
-//     },
-//     "Udyog Nagar": {
-//       "Peera Garhi": 1243.21,
-//       "Surajmal Stadium": 1354.32
-//     },
-//     "Surajmal Stadium": {
-//       "Udyog Nagar": 1354.32,
-//       "Nangloi": 1243.21
-//     },
-//     "Nangloi Railway Station": {
-//       "Nangloi": 1087.65,
-//       "Rajdhani Park": 1354.32
-//     },
-//     "Rajdhani Park": {
-//       "Nangloi Railway Station": 1354.32,
-//       "Mundka": 1543.21
-//     },
-//     "Mundka": {
-//       "Rajdhani Park": 1543.21,
-//       "Mundka Industrial Area": 1243.21
-//     },
-//     "Mundka Industrial Area": {
-//       "Mundka": 1243.21,
-//       "Ghevra Metro Station": 1432.10
-//     },
-//     "Ghevra Metro Station": {
-//       "Mundka Industrial Area": 1432.10,
-//       "Tikri Kalan": 1654.32
-//     },
-//     "Tikri Kalan": {
-//       "Ghevra Metro Station": 1654.32,
-//       "Tikri Border": 1243.21
-//     },
-//     "Tikri Border": {
-//       "Tikri Kalan": 1243.21,
-//       "Pandit Shree Ram Sharma": 1765.43
-//     },
-//     "Pandit Shree Ram Sharma": {
-//       "Tikri Border": 1765.43,
-//       "Bahadurgarh City": 1432.10
-//     },
-//     "Bahadurgarh City": {
-//       "Pandit Shree Ram Sharma": 1432.10,
-//       "Brigadier Hoshiar Singh": 1543.21
-//     },
-//     "Brigadier Hoshiar Singh": {
-//       "Bahadurgarh City": 1543.21
-//     },
-//     "Shastri Nagar": {
-//       "Inderlok": 1354.32,
-//       "Pratap Nagar": 1243.21
-//     },
-//     "Pratap Nagar": {
-//       "Shastri Nagar": 1243.21,
-//       "Pulbangash": 1132.10
-//     },
-//     "Pulbangash": {
-//       "Pratap Nagar": 1132.10,
-//       "Tis Hazari": 1087.65
-//     },
-//     "Tis Hazari": {
-//       "Pulbangash": 1087.65,
-//       "Kashmere Gate": 1543.21
-//     },
-//     "Phase 1": {
-//       "Sikanderpur": 987.65,
-//       "Belvedere Towers": 876.54
-//     },
-//     "Belvedere Towers": {
-//       "Phase 1": 876.54,
-//       "Cyber City": 987.65
-//     },
-//     "Cyber City": {
-//       "Belvedere Towers": 987.65,
-//       "Moulsari Avenue": 1132.10
-//     },
-//     "Moulsari Avenue": {
-//       "Cyber City": 1132.10,
-//       "Phase 3": 1243.21
-//     },
-//     "Phase 3": {
-//       "Moulsari Avenue": 1243.21,
-//       "Sector 53-54": 1087.65
-//     },
-//     "Sector 53-54": {
-//       "Phase 3": 1087.65,
-//       "Sikanderpur": 1254.32,
-//       "Sector 54 Chowk": 1132.10
-//     },
-//     "Sector 54 Chowk": {
-//       "Sector 53-54": 1132.10,
-//       "Sector 55-56": 987.65
-//     },
-//     "Sector 55-56": {
-//       "Sector 54 Chowk": 987.65
-//     },
-//     "Phase 2": {
-//       "Sikanderpur": 1432.10,
-//       "Phase 3": 1243.21
-//     },
-//     "Majlis Park": {
-//       "Azadpur": 1543.21
-//     },
-//     "Azadpur": {
-//       "Majlis Park": 1543.21,
-//       "Shalimar Bagh": 1354.32,
-//       "Model Town": 1432.10
-//     },
-//     "Shalimar Bagh": {
-//       "Azadpur": 1354.32,
-//       "Netaji Subhash Place": 1543.21
-//     },
-//     "Netaji Subhash Place": {
-//       "Shalimar Bagh": 1543.21,
-//       "Kohat Enclave": 1243.21,
-//       "Shakurpur": 1432.10
-//     },
-//     "Kanhaiya Nagar": {
-//       "Keshav Puram": 1243.21,
-//       "Inderlok": 1132.10
-//     },
-//     "Keshav Puram": {
-//       "Netaji Subhash Place": 1243.21,
-//       "Kanhaiya Nagar": 1132.10
-//     },
-//     "Kohat Enclave": {
-//       "Netaji Subhash Place": 1243.21,
-//       "Pitampura": 1132.10
-//     },
-//     "Pitampura": {
-//       "Kohat Enclave": 1132.10,
-//       "Rohini East": 1354.32
-//     },
-//     "Rohini East": {
-//       "Pitampura": 1354.32,
-//       "Rohini West": 1243.21
-//     },
-//     "Rohini West": {
-//       "Rohini East": 1243.21,
-//       "Rithala": 1543.21
-//     },
-//     "Rithala": {
-//       "Rohini West": 1543.21
-//     },
-//     "Shakurpur": {
-//       "Netaji Subhash Place": 1432.10,
-//       "Punjabi Bagh West": 1543.21
-//     },
-//     "Punjabi Bagh West": {
-//       "Shakurpur": 1543.21,
-//       "ESI Hospital": 1243.21
-//     },
-//     "ESI Hospital": {
-//       "Punjabi Bagh West": 1243.21,
-//       "Rajouri Garden": 1432.10
-//     },
-//     "Dhaula Kuan Metro": {
-//       "Durgabai Deshmukh South Campus": 1643.21,
-//       "Dhaula Kuan": 0
-//     }
-//   }
-
 let graph = {
   "Dilshad Garden": {
       "Jhilmil": 893.31
@@ -1010,19 +126,19 @@ let graph = {
   },
   "Gurudronacharya": {
       "Arjan Garh": 1565.43,
-      "Sikanderpur": 1287.65
+      "Sikanderpur (Rapid Metro)": 1287.65
   },
-  "Sikanderpur": { // Interchange Yellow/Rapid Metro
+  "Sikanderpur (Rapid Metro)": { // Interchange Yellow/Rapid Metro
       "Gurudronacharya": 1287.65, // Yellow Line
-      "MG Road": 1354.32, // Yellow Line
-      "Phase 1": 987.65 // Rapid Metro (Corrected)
+      "M G Road": 1354.32, // Yellow Line
+      "Phase 1 (Rapid Metro)": 987.65 // Rapid Metro
   },
-  "MG Road": {
-      "Sikanderpur": 1354.32,
+  "M G Road": {
+      "Sikanderpur (Rapid Metro)": 1354.32,
       "IFFCO Chowk": 1765.43
   },
   "IFFCO Chowk": {
-      "MG Road": 1765.43,
+      "M G Road": 1765.43,
       "Millennium City Centre Gurugram": 2165.43 // Updated Name
   },
   "Millennium City Centre Gurugram": { // Updated Name
@@ -1155,10 +271,11 @@ let graph = {
   },
   "Sector 28": {
       "Mewala Maharajpur": 1354.32,
-      "Raja Nahar Singh (Ballabhgarh)": 1876.54 // Updated Name
+      "Raja Nahar Singh": 1876.54 // Updated Name
   },
-  "Raja Nahar Singh (Ballabhgarh)": { // Updated Name
-      "Sector 28": 1876.54
+  "Raja Nahar Singh": { // Updated Name
+      "Sector 28": 1876.54,
+      "Escorts Mujesar": 1876.54
   },
   "Supreme Court": { // Was Pragati Maidan (Blue Line)
       "Mandi House": 1243.21,
@@ -1211,14 +328,14 @@ let graph = {
   },
   "Golf Course": {
       "Botanical Garden": 1354.32,
-      "Noida City Centre": 1632.10
+      "Wave City Center Noida": 1632.10
   },
-  "Noida City Centre": { // Old name, now Wave City Center Noida
+  "Wave City Center Noida": {  // formerly Noida City Centre
       "Golf Course": 1632.10,
       "Noida Sector 34": 1432.10
   },
   "Noida Sector 34": {
-      "Noida City Centre": 1432.10,
+      "Wave City Center Noida": 1432.10,
       "Noida Sector 52": 1765.43
   },
   "Noida Sector 52": { // Interchange Blue/Aqua (Noida Metro) - Aqua line not in this graph
@@ -1299,7 +416,7 @@ let graph = {
   },
   "R K Ashram Marg": { // Blue Line
       "Jhandewalan": 1354.32,
-      "Rajiv Chowk": 1400.2 // Corrected
+      "Rajiv Chowk": 1432.10
   },
   "Shadipur": {
       "Patel Nagar": 1243.21,
@@ -1343,7 +460,7 @@ let graph = {
   "Janakpuri West": { // Interchange Blue/Magenta
       "Janakpuri East": 1243.21, // Blue Line
       "Uttam Nagar East": 1432.10, // Blue Line
-      "Dabri Mor": 1876.54 // Magenta Line
+      "Dabri Mor - Janakpuri South": 1876.54 // Magenta Line
   },
   "Uttam Nagar East": {
       "Janakpuri West": 1432.10,
@@ -1364,40 +481,40 @@ let graph = {
   },
   "Dwarka": { // Interchange Blue/Grey
       "Dwarka Mor": 1765.43, // Blue Line
-      "Dwarka Sector 14": 1243.21, // Blue Line
+      "Dwarka Sector - 14": 1243.21, // Blue Line
       "Nangli": 1610.7 // Grey Line (Added)
   },
-  "Dwarka Sector 14": {
+  "Dwarka Sector - 14": {
       "Dwarka": 1243.21,
-      "Dwarka Sector 13": 1132.10
+      "Dwarka Sector - 13": 1132.10
   },
-  "Dwarka Sector 13": {
-      "Dwarka Sector 14": 1132.10,
-      "Dwarka Sector 12": 1087.65
+  "Dwarka Sector - 13": {
+      "Dwarka Sector - 14": 1132.10,
+      "Dwarka Sector - 12": 1087.65
   },
-  "Dwarka Sector 12": {
-      "Dwarka Sector 13": 1087.65,
-      "Dwarka Sector 11": 1354.32
+  "Dwarka Sector - 12": {
+      "Dwarka Sector - 13": 1087.65,
+      "Dwarka Sector - 11": 1354.32
   },
-  "Dwarka Sector 11": {
-      "Dwarka Sector 12": 1354.32,
-      "Dwarka Sector 10": 1243.21
+  "Dwarka Sector - 11": {
+      "Dwarka Sector - 12": 1354.32,
+      "Dwarka Sector - 10": 1243.21
   },
-  "Dwarka Sector 10": {
-      "Dwarka Sector 11": 1243.21,
-      "Dwarka Sector 9": 1132.10
+  "Dwarka Sector - 10": {
+      "Dwarka Sector - 11": 1243.21,
+      "Dwarka Sector - 9": 1132.10
   },
-  "Dwarka Sector 9": {
-      "Dwarka Sector 10": 1132.10,
-      "Dwarka Sector 8": 1087.65
+  "Dwarka Sector - 9": {
+      "Dwarka Sector - 10": 1132.10,
+      "Dwarka Sector - 8": 1087.65
   },
-  "Dwarka Sector 8": {
-      "Dwarka Sector 9": 1087.65,
-      "Dwarka Sector 21": 1543.21
+  "Dwarka Sector - 8": {
+      "Dwarka Sector - 9": 1087.65,
+      "Dwarka Sector - 21": 1543.21
   },
-  "Dwarka Sector 21": { // Interchange Blue/Airport Line
-      "Dwarka Sector 8": 1543.21, // Blue Line
-      "IGI Airport": 3432.10 // Airport Line (Corrected)
+  "Dwarka Sector - 21": { // Interchange Blue/Airport Line
+      "Dwarka Sector - 8": 1543.21,
+      "New Delhi": 3432.10
   },
   "Nangli": { // Grey Line
       "Dwarka": 1610.7, // Corrected
@@ -1426,7 +543,7 @@ let graph = {
   },
   "IGI Airport": { // Airport Line
       "Delhi Aerocity": 2876.54,
-      "Dwarka Sector 21": 3432.10
+      "Dwarka Sector - 21": 3432.10
   },
   // Violet Line (Kashmere Gate South)
   "Lal Quila": {
@@ -1452,14 +569,14 @@ let graph = {
   },
   "Naraina Vihar": {
       "Mayapuri": 1354.32,
-      "Delhi Cantt": 1765.43
+      "Delhi Cantt.": 1765.43
   },
-  "Delhi Cantt": {
+  "Delhi Cantt.": {
       "Naraina Vihar": 1765.43,
       "Durgabai Deshmukh South Campus": 1543.21
   },
   "Durgabai Deshmukh South Campus": { // Interchange Pink Line/Airport Line (via skywalk)
-      "Delhi Cantt": 1543.21,
+      "Delhi Cantt.": 1543.21,
       "Sir Vishweshwaraiah Moti Bagh": 1354.32,
       "Dhaula Kuan": 1643.21 // Link to Airport Line station
   },
@@ -1502,31 +619,31 @@ let graph = {
   },
   "Trilokpuri Sanjay Lake": {
       "Mayur Vihar Pocket 1": 1320.2,
-      "East Vinod Nagar Mayur Vihar II": 1330.3
+      "East Vinod Nagar - Mayur Vihar Phase 2": 1330.3
   },
-  "East Vinod Nagar Mayur Vihar II": {
-      "Trilokpuri Sanjay Lake": 1330.3,
-      "Mandawali West Vinod Nagar": 1340.4
+  "East Vinod Nagar - Mayur Vihar Phase 2": {
+      "Mayur Vihar Pocket 1": 1330.3,
+      "Mandawali - West Vinod Nagar": 1340.4
   },
-  "Mandawali West Vinod Nagar": {
-      "East Vinod Nagar Mayur Vihar II": 1340.4,
+  "Mandawali - West Vinod Nagar": {
+      "East Vinod Nagar - Mayur Vihar Phase 2": 1340.4,
       "IP Extension": 1350.5
   },
   "IP Extension": {
-      "Mandawali West Vinod Nagar": 1350.5,
+      "Mandawali - West Vinod Nagar": 1350.5,
       "Anand Vihar ISBT": 1360.6
   },
   // Pink Line (NE Extension - Added)
   "Jaffrabad": {
       "Welcome": 1410.7,
-      "Maujpur Babarpur": 1420.8
+      "Maujpur - Babarpur": 1420.8
   },
-  "Maujpur Babarpur": {
+  "Maujpur - Babarpur": {
       "Jaffrabad": 1420.8,
       "Gokulpuri": 1430.9
   },
   "Gokulpuri": {
-      "Maujpur Babarpur": 1430.9,
+      "Maujpur - Babarpur": 1430.9,
       "Johri Enclave": 1440.0
   },
   "Johri Enclave": {
@@ -1537,12 +654,12 @@ let graph = {
       "Johri Enclave": 1450.1
   },
   // Magenta Line (South section)
-  "IIT Delhi": {
+  "IIT": {
       "Hauz Khas": 1765.43,
       "Panchsheel Park": 1354.32
   },
   "Panchsheel Park": {
-      "IIT Delhi": 1354.32,
+      "IIT": 1354.32,
       "Chirag Delhi": 1243.21
   },
   "Chirag Delhi": {
@@ -1586,28 +703,28 @@ let graph = {
       "Botanical Garden": 1550.6 // Corrected
   },
   // Magenta Line (West section)
-  "Dabri Mor": { // Was Dabri Mor - Janakpuri South
+  "Dabri Mor - Janakpuri South": { // Corrected full station name
       "Janakpuri West": 1876.54,
-      "Dashrath Puri": 1354.32
+      "Dashrath Puri": 1543.21
   },
   "Dashrath Puri": {
-      "Dabri Mor": 1354.32,
+      "Dabri Mor - Janakpuri South": 1543.21,
       "Palam": 1432.10
   },
   "Palam": {
       "Dashrath Puri": 1432.10,
-      "Sadar Bazaar Cantonment": 1543.21
+      "Sadar Bazar Cantonment": 1543.21
   },
-  "Sadar Bazaar Cantonment": {
-      "Palam": 1543.21,
-      "Terminal 1 IGI Airport": 1876.54
+  "Sadar Bazar Cantonment": {
+      "Terminal 1 - IGI Airport": 1543.21,
+      "Palam": 1765.43
   },
-  "Terminal 1 IGI Airport": {
-      "Sadar Bazaar Cantonment": 1876.54,
-      "Shankar Vihar": 2143.21
+  "Terminal 1 - IGI Airport": {
+      "Shankar Vihar": 1876.54,
+      "Sadar Bazar Cantonment": 2143.21
   },
   "Shankar Vihar": {
-      "Terminal 1 IGI Airport": 2143.21,
+      "Terminal 1 - IGI Airport": 2143.21,
       "Vasant Vihar": 1654.32
   },
   "Vasant Vihar": {
@@ -1616,9 +733,9 @@ let graph = {
   },
   "Munirka": {
       "Vasant Vihar": 1243.21,
-      "R.K. Puram": 1354.32
+      "M G Road": 1354.32
   },
-  "R.K. Puram": {
+  "M G Road": {
       "Munirka": 1354.32,
       "Hauz Khas": 1532.76
   },
@@ -1647,18 +764,18 @@ let graph = {
   },
   "Madipur": {
       "Shivaji Park": 1087.65,
-      "Paschim Vihar East": 1354.32
+      "Paschim Vihar (East)": 1354.32
   },
-  "Paschim Vihar East": {
+  "Paschim Vihar (East)": {
       "Madipur": 1354.32,
-      "Paschim Vihar West": 1243.21
+      "Paschim Vihar (West)": 1243.21
   },
-  "Paschim Vihar West": {
-      "Paschim Vihar East": 1243.21,
+  "Paschim Vihar (West)": {
+      "Paschim Vihar (East)": 1243.21,
       "Peera Garhi": 1432.10
   },
   "Peera Garhi": {
-      "Paschim Vihar West": 1432.10,
+      "Paschim Vihar (West)": 1432.10,
       "Udyog Nagar": 1243.21
   },
   "Udyog Nagar": {
@@ -1691,7 +808,7 @@ let graph = {
   },
   "Ghevra Metro Station": {
       "Mundka Industrial Area": 1432.10,
-      "Tikri Kalan": 1654.32
+      "Mundka": 1654.32
   },
   "Tikri Kalan": {
       "Ghevra Metro Station": 1654.32,
@@ -1707,10 +824,11 @@ let graph = {
   },
   "Bahadurgarh City": {
       "Pandit Shree Ram Sharma": 1432.10,
-      "Brigadier Hoshiar Singh": 1543.21
+      "Brigadier Hoshiyar Singh": 1543.21
   },
-  "Brigadier Hoshiar Singh": {
-      "Bahadurgarh City": 1543.21
+  "Brigadier Hoshiyar Singh": {
+      "Bahadurgarh City": 1543.21,
+      "Tikri Border": 1765.43
   },
   // Red Line (West section)
   "Shastri Nagar": {
@@ -1719,14 +837,14 @@ let graph = {
   },
   "Pratap Nagar": {
       "Shastri Nagar": 1243.21,
-      "Pulbangash": 1132.10
+      "Pul Bangash": 1132.10
   },
-  "Pulbangash": {
+  "Pul Bangash": {
       "Pratap Nagar": 1132.10,
       "Tis Hazari": 1087.65
   },
   "Tis Hazari": {
-      "Pulbangash": 1087.65,
+      "Pul Bangash": 1087.65,
       "Kashmere Gate": 1543.21
   },
    // Red Line (North section)
@@ -1790,259 +908,43 @@ let graph = {
       "Rajouri Garden": 1432.10
   },
   // Rapid Metro (Simplified Linear Representation)
-  "Phase 1": {
-      "Sikanderpur": 987.65,
-      "Belvedere Towers": 876.54
+  "Phase 1 (Rapid Metro)": {
+      "Sikanderpur (Rapid Metro)": 987.65,
+      "Belvedere Towers (Rapid Metro)": 876.54
   },
-  "Belvedere Towers": {
-      "Phase 1": 876.54,
-      "Cyber City": 987.65
+  "Belvedere Towers (Rapid Metro)": {
+      "Phase 1 (Rapid Metro)": 876.54,
+      "Cyber City (Rapid Metro)": 987.65
   },
-  "Cyber City": {
-      "Belvedere Towers": 987.65,
-      "Moulsari Avenue": 1132.10
+  "Cyber City (Rapid Metro)": {
+      "Belvedere Towers (Rapid Metro)": 987.65,
+      "Moulsari Avenue (Rapid Metro)": 1132.10
   },
-  "Moulsari Avenue": {
-      "Cyber City": 1132.10,
-      "Phase 3": 1243.21
+  "Moulsari Avenue (Rapid Metro)": {
+      "Cyber City (Rapid Metro)": 1132.10,
+      "Phase 3 (Rapid Metro)": 1243.21
   },
-  "Phase 3": {
-      "Moulsari Avenue": 1243.21,
-      "Sector 42-43": 1710.8 // Corrected
+  "Phase 3 (Rapid Metro)": {
+      "Moulsari Avenue (Rapid Metro)": 1243.21,
+      "Sector 42-43 (Rapid Metro)": 1710.8 // Corrected
   },
-  "Sector 42-43": { // Added
-      "Phase 3": 1710.8,
-      "Sector 53-54": 1720.9
+  "Sector 42-43 (Rapid Metro)": {
+      "Phase 3 (Rapid Metro)": 1710.8,
+      "Sector 53-54 (Rapid Metro)": 1720.9
   },
-  "Sector 53-54": {
-      "Sector 42-43": 1720.9, // Corrected
-      "Sector 54 Chowk": 1132.10
-      // Removed incorrect Sikanderpur link
+  "Sector 53-54 (Rapid Metro)": {
+      "Sector 42-43 (Rapid Metro)": 1720.9,
+      "Sector 54 Chowk (Rapid Metro)": 1132.10
   },
-  "Sector 54 Chowk": {
-      "Sector 53-54": 1132.10,
-      "Sector 55-56": 987.65
+  "Sector 54 Chowk (Rapid Metro)": {
+      "Sector 53-54 (Rapid Metro)": 1132.10,
+      "Sector 55-56 (Rapid Metro)": 987.65
   },
-  "Sector 55-56": {
-      "Sector 54 Chowk": 987.65
+  "Sector 55-56 (Rapid Metro)": {
+      "Sector 54 Chowk (Rapid Metro)": 987.65
   }
 }
 
-// let colorLines = {
-//   "Dilshad Garden": "#CC0000",
-//   "Jhilmil": "#CC0000",
-//   "Mansarover park": "#CC0000",
-//   "Shahdara": "#CC0000",
-//   "Welcome": "#CC0000",
-//   "Seelam Pur": "#CC0000",
-//   "Shastri Park": "#CC0000",
-//   "Kashmere Gate": "interchange",
-//   "Tis Hazari": "#CC0000",
-//   "Pul Bangash": "#CC0000",
-//   "Pratap Nagar": "#CC0000",
-//   "Shastri Nagar": "#CC0000",
-//   "Inderlok": "interchange",
-//   "Kanhaiya Nagar": "#CC0000",
-//   "Keshav Puram": "#CC0000",
-//   "Netaji Subash Place": "#CC0000",
-//   "Kohat Enclave": "#CC0000",
-//   "Pitampura": "#CC0000",
-//   "Rohini East": "#CC0000",
-//   "Rohini West": "#CC0000",
-//   "Rithala": "#CC0000",
-//   "Vaishali": "#0000FF",
-//   "Kaushambi": "#0000FF",
-//   "Anand Vihar": "interchange",
-//   "Karkarduma": "interchange",
-//   "Preet Vihar": "#0000FF",
-//   "Nirman Vihar": "#0000FF",
-//   "Laxmi Nagar": "#0000FF",
-//   "Noida City Centre": "#0000FF",
-//   "Golf Course": "#0000FF",
-//   "Botanical Garden": "interchange",
-//   "Noida Sec -18": "#0000FF",
-//   "Noida Sec -16": "#0000FF",
-//   "Noida Sec -15": "#0000FF",
-//   "New Ashok Nagar": "#0000FF",
-//   "Mayur Vihar Ext": "#0000FF",
-//   "Mayur Vihar-I": "#0000FF",
-//   "Akshardham": "#0000FF",
-//   "Yamuna Bank": "interchange",
-//   "Indraprastha": "#0000FF",
-//   "Supreme Court": "#0000FF",
-//   "Mandi House": "interchange",
-//   "Barakhamba": "#0000FF",
-//   "Rajiv Chowk": "interchange",
-//   "RK Ashram Marg": "#0000FF",
-//   "Jhandewalan": "#0000FF",
-//   "Karol Bagh": "#0000FF",
-//   "Rajendra Place": "#0000FF",
-//   "Patel Nagar": "#0000FF",
-//   "Shadipur": "#0000FF",
-//   "Kirti Nagar": "interchange",
-//   "Moti Nagar": "#0000FF",
-//   "Ramesh Nagar": "#0000FF",
-//   "Rajouri Garden": "interchange",
-//   "Tagore Garden": "#0000FF",
-//   "Subash Nagar": "#0000FF",
-//   "Tilak Nagar": "#0000FF",
-//   "Janak Puri East": "#0000FF",
-//   "Janak Puri West": "interchange",
-//   "Uttam Nagar East": "#0000FF",
-//   "Uttam Nagar West": "#0000FF",
-//   "Nawada": "#0000FF",
-//   "Dwarka Mor": "#0000FF",
-//   "Dwarka": "#0000FF",
-//   "Dwarka Sector - 14": "#0000FF",
-//   "Dwarka Sector - 13": "#0000FF",
-//   "Dwarka Sector - 12": "#0000FF",
-//   "Dwarka Sector - 11": "#0000FF",
-//   "Dwarka Sector - 10": "#0000FF",
-//   "Dwarka Sector - 9": "#0000FF",
-//   "Dwarka Sector - 8": "#0000FF",
-//   "Dwarka Sector - 21": "interchange",
-//   "Mundka": "#008000",
-//   "Rajdhani Park": "#008000",
-//   "Nangloi Railway Station": "#008000",
-//   "Nangloi": "#008000",
-//   "Maharaja Surajmal Stadium": "#008000",
-//   "Udyog Nagar": "#008000",
-//   "Peera Garhi": "#008000",
-//   "Paschim Vihar (West)": "#008000",
-//   "Paschim Vihar (East)": "#008000",
-//   "Madipur": "#008000",
-//   "Shivaji Park": "#008000",
-//   "Punjabi Bagh": "#008000",
-//   "Ashok Park Main": "interchange",
-//   "Satguru Ram Singh Marg": "#008000",
-//   "Samaypur Badli": "#F7D117",
-//   "Rohini Sector 18-19": "#F7D117",
-//   "Haiderpur Badli Mor": "#F7D117",
-//   "Jahangirpuri": "#F7D117",
-//   "Adarsh Nagar": "#F7D117",
-//   "Azadpur": "interchange",
-//   "Model Town": "#F7D117",
-//   "Guru Tegh Bahadur Nagar": "#F7D117",
-//   "Vishwavidyalaya": "#F7D117",
-//   "Vidhan Sabha": "#F7D117",
-//   "Civil Lines": "#F7D117",
-//   "Chandni Chowk": "#F7D117",
-//   "Chawri Bazar": "#F7D117",
-//   "New Delhi": "interchange",
-//   "Patel Chowk": "#F7D117",
-//   "Central Secretariat": "interchange",
-//   "Udyog Bhawan": "#F7D117",
-//   "Lok Kalyan Marg": "#F7D117",
-//   "Jorbagh": "#F7D117",
-//   "Dilli Haat - INA": "interchange",
-//   "AIIMS": "#F7D117",
-//   "Green Park": "#F7D117",
-//   "Hauz Khas": "interchange",
-//   "Malviya Nagar": "#F7D117",
-//   "Saket": "#F7D117",
-//   "Qutab Minar": "#F7D117",
-//   "Chhattarpur": "#F7D117",
-//   "Sultanpur": "#F7D117",
-//   "Ghitorni": "#F7D117",
-//   "Arjan Garh": "#F7D117",
-//   "Gurudronacharya": "#F7D117",
-//   "Sikanderpur": "interchange",
-//   "MG Road": "#F7D117",
-//   "IFFCO Chowk": "#F7D117",
-//   "Huda City Centre": "#F7D117",
-//   "ITO": "#8F00FF",
-//   "Janpath": "#8F00FF",
-//   "Khan Market": "#8F00FF",
-//   "Jawahar Lal Nehru Stadium": "#8F00FF",
-//   "Jangpura": "#8F00FF",
-//   "Lajpat Nagar": "interchange",
-//   "Moolchand": "#8F00FF",
-//   "Kailash Colony": "#8F00FF",
-//   "Nehru Place": "#8F00FF",
-//   "Kalkaji Mandir": "interchange",
-//   "Govind Puri": "#8F00FF",
-//   "Harkesh Nagar Okhla": "#8F00FF",
-//   "Jasola-Apollo": "#8F00FF",
-//   "Sarita Vihar": "#8F00FF",
-//   "Mohan Estate": "#8F00FF",
-//   "Tughlakabad Station": "#8F00FF",
-//   "Badarpur Border": "#8F00FF",
-//   "Sarai": "#8F00FF",
-//   "NHPC Chowk": "#8F00FF",
-//   "Mewala Maharajpur": "#8F00FF",
-//   "Sector-28": "#8F00FF",
-//   "Badkal Mor": "#8F00FF",
-//   "Old Faridabad": "#8F00FF",
-//   "Neelam Chowk Ajronda": "#8F00FF",
-//   "Bata Chowk": "#8F00FF",
-//   "Escorts Mujesar": "#8F00FF",
-//   "Sikanderpur (Rapid Metro)": "#8F00FF",
-//   "Majlis Park": "#FF69B4",
-//   "Shalimar Bagh": "#FF69B4",
-//   "Shakurpur": "#FF69B4",
-//   "Punjabi Bagh West": "interchange",
-//   "ESI Basai Darapur": "#FF69B4",
-//   "Mayapuri": "#FF69B4",
-//   "Naraina Vihar": "#FF69B4",
-//   "Delhi Cantt.": "#FF69B4",
-//   "Durgabai Deshmukh South Campus": "interchange",
-//   "Nehru Enclave": "#FF69B4",
-//   "Greater Kailash": "#FF69B4",
-//   "Chirag Delhi": "#FF69B4",
-//   "Panchsheel Park": "#FF69B4",
-//   "IIT": "#FF69B4",
-//   "RK Puram": "#FF69B4",
-//   "Munirka": "#FF69B4",
-//   "Vasant Vihar": "#FF69B4",
-//   "Shankar Vihar": "#FF69B4",
-//   "Terminal 1- IGI #FFA500": "#FF69B4",
-//   "Sadar Bazar Contonment": "#FF69B4",
-//   "Palam": "#FF69B4",
-//   "Dashrath Puri": "#FF69B4",
-//   "Dabri Mor - Janakpuri South": "#FF69B4",
-//   "Mundka Industrial Area (M.I.A)": "#FF69B4",
-//   "Ghevra Metro station": "#FF69B4",
-//   "Tikri Kalan": "#FF69B4",
-//   "Tikri Border": "#FF69B4",
-//   "Pandit Shree Ram Sharma": "#FF69B4",
-//   "Bahadurgarh City": "#FF69B4",
-//   "Brigadier Hoshiyar Singh": "#FF69B4",
-//   "Sir Vishweshwaraiah Moti Bagh": "#FF69B4",
-//   "Bhikaji Cama Place": "#FF69B4",
-//   "Sarojini Nagar": "#FF69B4",
-//   "South Extension": "#FF69B4",
-//   "Trilokpuri Sanjay Lake": "#FF69B4",
-//   "East Vinod Nagar - Mayur Vihar-II": "#FF69B4",
-//   "Mandawali - West Vinod Nagar": "#FF69B4",
-//   "IP Extension": "#FF69B4",
-//   "Karkarduma Court": "#FF69B4",
-//   "Krishna Nagar": "#FF69B4",
-//   "East Azad Nagar": "#FF69B4",
-//   "Jafrabad": "#FF69B4",
-//   "Maujpur - Babarpur": "#FF69B4",
-//   "Gokulpuri": "#FF69B4",
-//   "Johri Enclave": "#FF69B4",
-//   "Shiv Vihar": "#FF69B4",
-//   "Okhla Bird Sanctuary": "#800080",
-//   "Kalindi Kunj": "#800080",
-//   "Jasola Vihar Shaheen Bagh": "#800080",
-//   "Okhla Vihar": "#800080",
-//   "Jamia Millia Islamia": "#800080",
-//   "Sukhdev Vihar": "#800080",
-//   "Okhla NSIC": "#800080",
-//   "Phase-I (Rapid Metro)": "#800080",
-//   "Sector 42-43 (Rapid Metro)": "#800080",
-//   "Sector 53-54 (Rapid Metro)": "#800080",
-//   "Sector 54 Chowk (Rapid Metro)": "#800080",
-//   "Sector 55-56 (Rapid Metro)": "#800080",
-//   "Nangli": "#808080",
-//   "Najafgarh": "#808080",
-//   "Dhansa Bus Stand": "#808080",
-//   "IGI #FFA500": "#FFA500",
-//   "Delhi Aerocity": "#FFA500",
-//   "Dhaula Kuan": "interchange",
-//   "Shivaji Stadium": "#FFA500"
-// }
 
 let colorLines = {
   //Red Line
@@ -2053,7 +955,7 @@ let colorLines = {
   "Seelampur": "#CC0000", //Added/Corrected Name
   "Shastri Park": "#CC0000",
   "Tis Hazari": "#CC0000",
-  "Pulbangash": "#CC0000", //Corrected Name
+  "Pul Bangash": "#CC0000", //Corrected Name
   "Pratap Nagar": "#CC0000",
   "Shastri Nagar": "#CC0000",
   "Kanhaiya Nagar": "#CC0000",
@@ -2078,7 +980,7 @@ let colorLines = {
   "Noida Sector 61": "#0000FF", //In graph, add if missing
   "Noida Sector 52": "#0000FF", //In graph, add if missing
   "Noida Sector 34": "#0000FF", //In graph, add if missing
-  "Noida City Centre": "#0000FF", //Corrected Name (Wave City Center)
+  "Wave City Center Noida": "#0000FF", //Corrected Name (Wave City Center)
   "Golf Course": "#0000FF",
   "Noida Sector 18": "#0000FF", //Corrected Name
   "Noida Sector 16": "#0000FF", //Corrected Name
@@ -2100,28 +1002,28 @@ let colorLines = {
   "Moti Nagar": "#0000FF",
   "Ramesh Nagar": "#0000FF",
   "Tagore Garden": "#0000FF",
-  "Subhash Nagar": "#0000FF", //Corrected Name
+  "Subhash Nagar": "#0000FF", //Updated name
   "Tilak Nagar": "#0000FF",
   "Janakpuri East": "#0000FF", //Corrected Name
   "Uttam Nagar East": "#0000FF",
   "Uttam Nagar West": "#0000FF",
   "Nawada": "#0000FF",
   "Dwarka Mor": "#0000FF",
-  "Dwarka Sector 14": "#0000FF", //Corrected Name
-  "Dwarka Sector 13": "#0000FF", //Corrected Name
-  "Dwarka Sector 12": "#0000FF", //Corrected Name
-  "Dwarka Sector 11": "#0000FF", //Corrected Name
-  "Dwarka Sector 10": "#0000FF", //Corrected Name
-  "Dwarka Sector 9": "#0000FF", //Corrected Name
-  "Dwarka Sector 8": "#0000FF", //Corrected Name
+  "Dwarka Sector - 14": "#0000FF", //Corrected Name
+  "Dwarka Sector - 13": "#0000FF", //Corrected Name
+  "Dwarka Sector - 12": "#0000FF", //Corrected Name
+  "Dwarka Sector - 11": "#0000FF", //Corrected Name
+  "Dwarka Sector - 10": "#0000FF", //Corrected Name
+  "Dwarka Sector - 9": "#0000FF", //Corrected Name
+  "Dwarka Sector - 8": "#0000FF", //Corrected Name
 
   //Green Line
-  "Brigadier Hoshiyar Singh": "#008000", //In graph, add if missing
+  "Brigadier Hoshiyar Singh": "#008000", //Updated name
   "Bahadurgarh City": "#008000", //In graph, add if missing
   "Pandit Shree Ram Sharma": "#008000", //In graph, add if missing
   "Tikri Border": "#008000", //In graph, add if missing
   "Tikri Kalan": "#008000", //In graph, add if missing
-  "Ghevra Metro Station": "#008000", //Added/Corrected Name
+  "Ghevra Metro Station": "#008000", //Updated name
   "Mundka Industrial Area": "#008000", //Added/Corrected Name
   "Mundka": "#008000",
   "Rajdhani Park": "#008000",
@@ -2130,8 +1032,8 @@ let colorLines = {
   "Surajmal Stadium": "#008000", //Corrected Name
   "Udyog Nagar": "#008000",
   "Peera Garhi": "#008000",
-  "Paschim Vihar West": "#008000", //Added/Corrected Name
-  "Paschim Vihar East": "#008000", //Added/Corrected Name
+  "Paschim Vihar (West)": "#008000", //Updated name format
+  "Paschim Vihar (East)": "#008000", //Updated name format
   "Madipur": "#008000",
   "Shivaji Park": "#008000",
   "Punjabi Bagh": "#008000",
@@ -2163,7 +1065,7 @@ let colorLines = {
   "Ghitorni": "#F7D117",
   "Arjan Garh": "#F7D117",
   "Gurudronacharya": "#F7D117",
-  "MG Road": "#F7D117",
+  "M G Road": "#F7D117",
   "IFFCO Chowk": "#F7D117",
   "Millennium City Centre Gurugram": "#F7D117", //Corrected Name
 
@@ -2188,8 +1090,8 @@ let colorLines = {
   "Sarai": "#8F00FF",
   "NHPC Chowk": "#8F00FF",
   "Mewala Maharajpur": "#8F00FF",
-  "Sector 28": "#8F00FF", //Corrected Name
-  "Raja Nahar Singh (Ballabhgarh)": "#8F00FF", //Added
+  "Sector 28": "#8F00FF", //Updated name format
+  "Raja Nahar Singh": "#8F00FF", //Updated name
 
   //Pink Line
   "Majlis Park": "#FF69B4",
@@ -2198,7 +1100,7 @@ let colorLines = {
   "ESI Hospital": "#FF69B4", //Corrected Name
   "Mayapuri": "#FF69B4",
   "Naraina Vihar": "#FF69B4",
-  "Delhi Cantt": "#FF69B4", //Corrected Name
+  "Delhi Cantt.": "#FF69B4", //Corrected Name
   "Sir Vishweshwaraiah Moti Bagh": "#FF69B4",
   "Bhikaji Cama Place": "#FF69B4",
   "Sarojini Nagar": "#FF69B4",
@@ -2209,14 +1111,14 @@ let colorLines = {
   "Hazrat Nizamuddin": "#FF69B4", //In graph, add if missing
   "Mayur Vihar Pocket 1": "#FF69B4", //Added
   "Trilokpuri Sanjay Lake": "#FF69B4",
-  "East Vinod Nagar Mayur Vihar II": "#FF69B4", //Corrected Name
-  "Mandawali West Vinod Nagar": "#FF69B4", //Corrected Name
+  "East Vinod Nagar - Mayur Vihar Phase 2": "#FF69B4", //Updated name
+  "Mandawali - West Vinod Nagar": "#FF69B4", //Corrected Name
   "IP Extension": "#FF69B4",
   "Karkarduma Court": "#FF69B4",
   "Krishna Nagar": "#FF69B4",
   "East Azad Nagar": "#FF69B4",
   "Jaffrabad": "#FF69B4", //Added/Corrected Name
-  "Maujpur Babarpur": "#FF69B4", //Added/Corrected Name
+  "Maujpur - Babarpur": "#FF69B4", //Added/Corrected Name
   "Gokulpuri": "#FF69B4",
   "Johri Enclave": "#FF69B4",
   "Shiv Vihar": "#FF69B4",
@@ -2233,16 +1135,16 @@ let colorLines = {
   "Greater Kailash": "#800080", //Found in graph, added
   "Chirag Delhi": "#800080", //Found in graph, added
   "Panchsheel Park": "#800080", //Found in graph, added
-  "IIT Delhi": "#800080", //Added/Corrected Name
-  "R.K. Puram": "#800080", //Added/Corrected Name
+  "IIT": "#800080", //Added/Corrected Name
+  "M G Road": "#800080", //Added/Corrected Name
   "Munirka": "#800080", //Found in graph, added
   "Vasant Vihar": "#800080", //Found in graph, added
   "Shankar Vihar": "#800080", //Found in graph, added
-  "Terminal 1 IGI Airport": "#800080", //Added/Corrected Name & Color
-  "Sadar Bazaar Cantonment": "#800080", //Added/Corrected Name
+  "Terminal 1 - IGI Airport": "#800080", //Added/Corrected Name
+  "Sadar Bazar Cantonment": "#800080", //Updated name
   "Palam": "#800080", //Found in graph, added
   "Dashrath Puri": "#800080", //Found in graph, added
-  "Dabri Mor": "#800080", //Added/Corrected Name
+  "Dabri Mor - Janakpuri South": "#800080", //Added/Corrected Name
 
   //Grey Line
   "Nangli": "#808080",
@@ -2255,15 +1157,15 @@ let colorLines = {
   "Shivaji Stadium": "#FFA500",
 
   //Rapid Metro (Assigned #00AEEF)
-  "Phase 1": "#00AEEF", //Added/Corrected Name
-  "Belvedere Towers": "#00AEEF", //Added
-  "Cyber City": "#00AEEF", //Added
-  "Moulsari Avenue": "#00AEEF", //Added
-  "Phase 3": "#00AEEF", //Added
-  "Sector 42-43": "#00AEEF", //Added/Corrected Name
-  "Sector 53-54": "#00AEEF", //Added/Corrected Name
-  "Sector 54 Chowk": "#00AEEF", //Added/Corrected Name
-  "Sector 55-56": "#00AEEF", //Added/Corrected Name
+  "Phase 1 (Rapid Metro)": "#00AEEF", //Updated name format
+  "Belvedere Towers (Rapid Metro)": "#00AEEF", //Added
+  "Cyber City (Rapid Metro)": "#00AEEF", //Added
+  "Moulsari Avenue (Rapid Metro)": "#00AEEF", //Added
+  "Phase 3 (Rapid Metro)": "#00AEEF", //Added
+  "Sector 42-43 (Rapid Metro)": "#00AEEF", //Added/Corrected Name
+  "Sector 53-54 (Rapid Metro)": "#00AEEF", //Added/Corrected Name
+  "Sector 54 Chowk (Rapid Metro)": "#00AEEF", //Added/Corrected Name
+  "Sector 55-56 (Rapid Metro)": "#00AEEF", //Added/Corrected Name
 
   //Interchanges
   "Kashmere Gate": "interchange",
@@ -2278,14 +1180,14 @@ let colorLines = {
   "Rajouri Garden": "interchange",
   "Janakpuri West": "interchange", //Corrected Name
   "Dwarka": "interchange", //Updated
-  "Dwarka Sector 21": "interchange",
+  "Dwarka Sector - 21": "interchange",
   "Ashok Park Main": "interchange",
   "Azadpur": "interchange",
   "New Delhi": "interchange", //Updated Name Consistency
   "Central Secretariat": "interchange",
   "Dilli Haat - INA": "interchange",
   "Hauz Khas": "interchange",
-  "Sikanderpur": "interchange",
+  "Sikanderpur (Rapid Metro)": "interchange",
   "Lajpat Nagar": "interchange",
   "Kalkaji Mandir": "interchange",
   "Netaji Subhash Place": "interchange", //Updated
@@ -2296,5 +1198,6 @@ let colorLines = {
   "Dhaula Kuan": "interchange",
   "IGI Airport": "interchange" //Updated
 }
+
 
 export { graph, colorLines };

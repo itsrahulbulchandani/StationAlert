@@ -168,14 +168,27 @@ export const findAllRoutes2  = (graph, start, end, stationLines, maxDepth = 50) 
     let interChangeStations = [];
     let currentLine = null;
     let lineChangeColors = [];
+    let colorPath = [];
     
     for (let i = 0; i < path.length; i++) {
       const station = path[i];
       const stationLine = stationLines[station];
-
+      
       if(stationLine == null || stationLine == "interchange"){
+        if(i > 0 && i < path.length - 1){
+          // if(stationLines[path[i-1]] == "interchange" && i-2 >0){
+          //   colorPath = [...colorPath, stationLines[path[i-2]]]
+          // }
+          // else if(stationLines[path[i+1]] != "interchange" && i+2 == 0 && i+1 < path.length-1 ){
+          //   colorPath = [...colorPath, stationLines[path[i+1]]]
+          // }
+          // else{
+            colorPath = [...colorPath, stationLines[path[i-1]]]
+          // }
+        }
         continue;
       }
+      colorPath = [...colorPath, stationLine]
       // If this is the first station, set the current line
       if (i === 0) {
         currentLine = stationLine;
@@ -185,20 +198,20 @@ export const findAllRoutes2  = (graph, start, end, stationLines, maxDepth = 50) 
       // Check if the line changed
       if (stationLine !== currentLine) {
         interchanges++;
-        interChangeStations.push(station)
+        interChangeStations.push(path[i-1])
         lineChangeColors.push(stationLine);
         currentLine = stationLine;
       }
     }
     
-    return {interchanges, interChangeStations, lineChangeColors};
+    return {interchanges, interChangeStations, lineChangeColors, colorPath};
   };
   
   // For DFS, we'll use a recursive function
-  function dfs(currentStation, path, totalDistance, visited, colorPath) {
+  function dfs(currentStation, path, totalDistance, visited) {
     // If we've reached the destination, add the path to our results≠
     if (currentStation === end) {
-      const {interchanges, interChangeStations, lineChangeColors} = countInterchanges(path);
+      const {interchanges, interChangeStations, lineChangeColors, colorPath} = countInterchanges(path);
       allRoutes.push({
         path: [...path],
         distance: totalDistance,
@@ -234,10 +247,10 @@ export const findAllRoutes2  = (graph, start, end, stationLines, maxDepth = 50) 
       
       // Create new path by appending this neighbor
       const newPath = [...path, neighbor];
-      const newColorPath = [...colorPath, stationLines[neighbor]]
+      // const newColorPath = [...colorPath, stationLines[neighbor]]
       
       // Continue DFS
-      dfs(neighbor, newPath, newDistance, newVisited, newColorPath);
+      dfs(neighbor, newPath, newDistance, newVisited);
     }
   }
   

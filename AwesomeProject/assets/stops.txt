@@ -4,7 +4,7 @@ stop_id,stop_code,stop_name,stop_desc,stop_lat,stop_lon
 3,,Mansrover park,,28.675352,77.301178
 4,,Shahdara,,28.673531,77.28727
 5,,Welcome,,28.671986,77.277931
-6,,Seelam Pur,,28.670324,77.267311
+6,,Seelampur,,28.670324,77.267311
 7,,Shastri Park,,28.668451,77.250404
 8,,Kashmere Gate,,28.667879,77.228012
 9,,Tis Hazari,,28.667137,77.216721
@@ -14,7 +14,7 @@ stop_id,stop_code,stop_name,stop_desc,stop_lat,stop_lon
 13,,Inderlok,,28.673452,77.170235
 14,,Kanhaiya Nagar,,28.682386,77.162552
 15,,Keshav Puram,,28.688944,77.161774
-16,,Netaji Subash Place,,28.695637,77.152428
+16,,Netaji Subhash Place,,28.695637,77.152428
 17,,Kohat Enclave,,28.697943,77.140465
 18,,Pitampura,,28.70318,77.132355
 19,,Rohini East,,28.707941,77.125732
@@ -69,10 +69,10 @@ stop_id,stop_code,stop_name,stop_desc,stop_lat,stop_lon
 68,,Sikanderpur,,28.481352,77.092995
 69,,MG Road,,28.47967,77.080444
 70,,IFFCO Chowk,,28.472137,77.072502
-71,,Huda City Centre,,28.459118,77.072586
+71,,Millennium City Centre Gurugram,,28.459118,77.072586
 72,,Vaishali,,28.650059,77.337608
 73,,Kaushambi,,28.645428,77.322273
-74,,Anand Vihar,,28.647005,77.316185
+74,,Anand Vihar ISBT,,28.647005,77.316185
 75,,Karkarduma,,28.648653,77.304581
 76,,Preet Vihar,,28.641352,77.295158
 77,,Nirman Vihar,,28.637049,77.287872
@@ -84,8 +84,8 @@ stop_id,stop_code,stop_name,stop_desc,stop_lat,stop_lon
 83,,Noida Sec -16,,28.577921,77.318115
 84,,Noida Sec -15,,28.585018,77.311584
 85,,New Ashok Nagar,,28.58847,77.30146
-86,,Mayur Vihar Ext,,28.594124,77.294495
-87,,Mayur Vihar-I,,28.604425,77.289421
+86,,Mayur Vihar Extension,,28.594124,77.294495
+87,,Mayur Vihar Phase 1,,28.604425,77.289421
 88,,Akshardham,,28.618364,77.279816
 89,,Yamuna Bank,,28.623178,77.267937
 90,,Indraprastha,,28.620272,77.250076
@@ -103,10 +103,10 @@ stop_id,stop_code,stop_name,stop_desc,stop_lat,stop_lon
 102,,Ramesh Nagar,,28.652809,77.131462
 103,,Rajouri Garden,,28.649157,77.122749
 104,,Tagore Garden,,28.643795,77.112747
-105,,Subash Nagar,,28.640381,77.10273
+105,,Subhash Nagar,,28.640381,77.10273
 106,,Tilak Nagar,,28.636568,77.096336
-107,,Janak Puri East,,28.633121,77.086578
-108,,Janak Puri West,,28.629637,77.077866
+107,,Janakpuri East,,28.633121,77.086578
+108,,Janakpuri West,,28.629637,77.077866
 109,,Uttam Nagar East,,28.624643,77.063126
 110,,Uttam Nagar West,,28.621672,77.055664
 111,,Nawada,,28.620222,77.044991
@@ -231,11 +231,11 @@ stop_id,stop_code,stop_name,stop_desc,stop_lat,stop_lon
 230,,Major Mohit Sharma Rajender Nagar,,28.678095,77.359528
 231,,Raj Bagh,,28.677122,77.346466
 232,,Shaheed Nagar,,28.676615,77.333809
-233,,Noida Sec-34,,28.580229,77.363518
-234,,Noida Sec-52,,28.586849,77.372749
-235,,Noida Sec-61,,28.597677,77.372368
-236,,Noida Sec-59,,28.609089,77.372955
-237,,Noida Sec-62,,28.616991,77.373611
+233,,Noida Sector 34,,28.580229,77.363518
+234,,Noida Sector 52,,28.586849,77.372749
+235,,Noida Sector 61,,28.597677,77.372368
+236,,Noida Sector 59,,28.609089,77.372955
+237,,Noida Sector 62,,28.616991,77.373611
 238,,Noida Electronic City,,28.628685,77.375229
 239,,Nangli,,28.61722,77.010345
 240,,Najafgarh,,28.613316,76.986259

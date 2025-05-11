@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, View, StyleSheet } from 'react-native';
+import { Animated, View, StyleSheet, Easing } from 'react-native';
 
 const CustomMarkerAnimated = ({
   color,
@@ -7,60 +7,53 @@ const CustomMarkerAnimated = ({
   borderWidth = 2,
   borderColor = '#FFFFFF',
   isTerminal = false,
+  index = 0,
+  totalMarkers = 1,
 }) => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const opacityAnim = useRef(new Animated.Value(0.4)).current;
   
   useEffect(() => {
-    Animated.loop(
-      Animated.parallel([
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: isTerminal ? 1.7 : 1.5,
-            duration: isTerminal ? 1000 : 1200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.sequence([
-          Animated.timing(opacityAnim, {
-            toValue: isTerminal ? 0.9 : 0.7,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(opacityAnim, {
-            toValue: 0.4,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ]),
-      ])
-    ).start();
-  }, [pulseAnim, opacityAnim, isTerminal]);
+    const singleMarkerDuration = 800;
+    
+    const createSingleAnimation = () => {
+      return Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: isTerminal ? 1.9 : 1.9, // Reduced scale for subtler effect
+          duration: singleMarkerDuration * 0.7,
+          easing: Easing.bezier(0.4, 0, 0.2, 1),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: singleMarkerDuration * 0.3,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]);
+    };
+
+    const createSequencedAnimation = () => {
+      return Animated.sequence([
+        Animated.delay(index * singleMarkerDuration),
+        createSingleAnimation(),
+        ...(index < totalMarkers - 1 
+          ? [Animated.delay((totalMarkers - index - 1) * singleMarkerDuration)]
+          : [])
+      ]);
+    };
+    
+    Animated.loop(createSequencedAnimation()).start();
+    
+    return () => {
+      pulseAnim.stopAnimation();
+    };
+  }, [pulseAnim, isTerminal, index, totalMarkers]);
 
   const shadowRadius = Math.max(size / 2, 6);
 
   return (
     <View style={styles.container}>
       <Animated.View
-        style={[
-          styles.glow,
-          {
-            width: size * 3,
-            height: size * 3,
-            borderRadius: (size * 3) / 2,
-            backgroundColor: color,
-            opacity: opacityAnim,
-            transform: [{ scale: pulseAnim }],
-          },
-        ]}
-      />
-      
-      <View
         style={[
           styles.marker,
           {
@@ -75,23 +68,24 @@ const CustomMarkerAnimated = ({
             shadowOpacity: 0.8,
             shadowRadius: shadowRadius,
             elevation: 10,
+            transform: [{ scale: pulseAnim }],
           },
         ]}
-      />
-      
-      {isTerminal && (
-        <View
-          style={[
-            styles.centralDot,
-            {
-              width: size / 3,
-              height: size / 3,
-              borderRadius: size / 6,
-              backgroundColor: '#FFFFFF',
-            },
-          ]}
-        />
-      )}
+      >
+        {isTerminal && (
+          <View
+            style={[
+              styles.centralDot,
+              {
+                width: size / 3,
+                height: size / 3,
+                borderRadius: size / 6,
+                backgroundColor: '#FFFFFF',
+              },
+            ]}
+          />
+        )}
+      </Animated.View>
     </View>
   );
 };
@@ -102,15 +96,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
   },
-  glow: {
-    position: 'absolute',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   marker: {
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'absolute',
+    position: 'relative',
     zIndex: 2,
   },
   centralDot: {
