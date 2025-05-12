@@ -17,7 +17,6 @@ import {
   findRoutesWithTransfers,
 } from '../utilities/helper';
 import CustomMarkerAnimated from './CustomMarkerAnimated';
-// import {metroRoutes} from './metroRoutes';
 import { TabContext } from '../App';
 
 // const {width, height} = Dimensions.get('window');
@@ -27,45 +26,6 @@ const convertCoords = (lat, lon) => ({
   latitude: lat,
   longitude: lon,
 });
-
-// const metroRoutes = {
-//   red: {
-//     color: '#CC0000',
-//     stations: [],
-//   },
-//   blue: {
-//     color: '#0000FF',
-//     stations: [],
-//   },
-//   green: {
-//     color: '#008000',
-//     stations: [],
-//   },
-//   yellow: {
-//     color: '#F7D117',
-//     stations: [],
-//   },
-//   violet: {
-//     color: '#8F00FF',
-//     stations: [],
-//   },
-//   pink: {
-//     color: '#FF69B4',
-//     stations: [],
-//   },
-//   magenta: {
-//     color: '#800080',
-//     stations: [],
-//   },
-//   grey: {
-//     color: '#808080',
-//     stations: [],
-//   },
-//   orange: {
-//     color: '#FFA500',
-//     stations: [],
-//   },
-// };
 
 const RouteMapScreen = () => {
   const [scale, setScale] = useState(2);
@@ -220,12 +180,6 @@ const RouteMapScreen = () => {
         // localStations[stop_name] = {...station}
         const id = parseInt(stop_id);
         stops.push(station);
-        //Check each route's range and add the station if it falls within
-        // Object.entries(routeRanges).forEach(([routeName, range]) => {
-        //   if (id >= range.start && id <= range.end) {
-        //     metroRoutes[routeName].stations.push(station);
-        //   }
-        // });
       }
       setStations(stops);
       console.log(localStations)
@@ -467,18 +421,7 @@ const RouteMapScreen = () => {
     if (stationsLoaded && !loading) {
       // Process your data into a format ready for markers
       const markers = [];
-      // Object.entries(metroRoutes).forEach(([routeName, route]) => {
-      //   route.stations.forEach(station => {
-      //     markers.push({
-      //       id: `${station.name}`,
-      //       coordinate: station.coords,
-      //       title: station.name,
-      //       description: `${routeName.toUpperCase()} Line`,
-      //       color: route.color || 'red',
-      //     });
-      //   });
-      // });
-      // console.log("testing one two three",stationColor);
+     
       setMarkerData(stations);
     }
   }, [stationsLoaded, loading]);
