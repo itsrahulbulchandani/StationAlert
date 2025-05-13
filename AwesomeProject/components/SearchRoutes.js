@@ -13,10 +13,11 @@ import {
   Dimensions,
 } from 'react-native';
 import {metroStation} from './metroRoutes';
-import {colorLines, graph} from './graph';
+import {colorLines, colorLinesWithIds, graph, graphWithIds} from './graph';
 import {TabContext} from '../App';
 import {findAllRoutes2} from '../utilities/helper';
 import RouteSelection from './RouteSelection';
+import stationsInverted from './stations_inverted';
 
 const { width } = Dimensions.get('window');
 
@@ -100,11 +101,15 @@ const SearchRoutesScreen = () => {
       );
       return;
     }
+
+    const fromStationId = stationsInverted[fromStation];
+    const toStationId = stationsInverted[toStation];
+
     const routes2 = findAllRoutes2(
-      graph,
-      fromStation,
-      toStation,
-      colorLines,
+      graphWithIds,
+      fromStationId,
+      toStationId,
+      colorLinesWithIds,
       50,
     );
     console.log(routes2)

@@ -8,9 +8,11 @@ import {
   Dimensions,
 } from 'react-native';
 import {TabContext} from '../App';
-
+import stationsFromKeys from './stationsFromKeys';
+import { lightenColor } from '../utilities/helper';
 const { width } = Dimensions.get('window');
 
+// Keeping pastelColors as a fallback
 const pastelColors = [
   '#E0F7FA', '#FCE4EC', '#FFF9C4', '#E1BEE7', '#C8E6C9', '#FFECB3', '#B3E5FC', '#FFCDD2', '#D1C4E9', '#DCEDC8'
 ];
@@ -33,7 +35,7 @@ const RouteSelection = ({onClose}) => {
         activeOpacity={0.9}>
         <View style={styles.routeCardHeader}>
           <Text style={styles.routeCardTitle}>
-            {item?.path[0]} → {item?.path[item?.path?.length - 1]}
+            {stationsFromKeys[item?.path[0]]} → {stationsFromKeys[item?.path[item?.path?.length - 1]]}
           </Text>
           
           {/* Only show interchange stations if they exist */}
@@ -44,9 +46,12 @@ const RouteSelection = ({onClose}) => {
                 {item?.interChangeStations?.map((station, idx) => (
                   <View 
                     key={idx}
-                    style={[styles.stationPill, {backgroundColor: pastelColors[(idx + 1) % pastelColors.length]}]}
+                    style={[
+                      styles.stationPill, 
+                      {backgroundColor: item?.lineChangeColors[idx] ? lightenColor(item?.lineChangeColors[idx]) : pastelColors[idx % pastelColors.length]}
+                    ]}
                   >
-                    <Text style={[styles.stationPillText, {color: item?.lineChangeColors[idx]}]}>{station}</Text>
+                    <Text style={[styles.stationPillText, {color: item?.lineChangeColors[idx]}]}>{stationsFromKeys[station]}</Text>
                   </View>
                 ))}
               </View>
@@ -98,7 +103,7 @@ const RouteSelection = ({onClose}) => {
                           styles.stationName,
                           isInterchange && styles.interchangeStationName
                         ]}>
-                          {station}
+                          {stationsFromKeys[station]}
                         </Text>
                         
                         {isInterchange && (
@@ -109,7 +114,7 @@ const RouteSelection = ({onClose}) => {
                       </View>
                       
                       {idx < item.path.length - 1 && (
-                        <View style={[styles.connectionLine, {backgroundColor: item?.colorPath[idx]!="interchange" ? item?.colorPath[idx] : idx+1 <= item?.colorPath?.length-1 ? item?.colorPath[idx+1] : "#000000"}]} />
+                        <View style={[styles.connectionLine, {backgroundColor: item?.colorPath[idx] ? item?.colorPath[idx] : "#000000"}]} />
                       )}
                     </View>
                   </View>

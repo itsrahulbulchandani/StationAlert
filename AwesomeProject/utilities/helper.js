@@ -33,6 +33,25 @@ export const buildGraph = (stations, shapes) => {
   return graph;
 };
 
+
+// Function to lighten a color
+export const lightenColor = (color, percent = 0.8) => {
+  // Remove the # if it exists
+  let hex = color.replace('#', '');
+  
+  // Convert to RGB
+  let r = parseInt(hex.substring(0, 2), 16);
+  let g = parseInt(hex.substring(2, 4), 16);
+  let b = parseInt(hex.substring(4, 6), 16);
+  
+  // Lighten the color
+  r = Math.floor(r + (255 - r) * percent);
+  g = Math.floor(g + (255 - g) * percent);
+  b = Math.floor(b + (255 - b) * percent);
+  
+  // Convert back to hex
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+};
 // Haversine formula if needed elsewhere
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const toRad = x => (x * Math.PI) / 180;
@@ -169,35 +188,41 @@ export const findAllRoutes2  = (graph, start, end, stationLines, maxDepth = 50) 
     let currentLine = null;
     let lineChangeColors = [];
     let colorPath = [];
-    
+    if(path.length == 13){
+      console.log("stationLine")
+    }
     for (let i = 0; i < path.length; i++) {
       const station = path[i];
       const stationLine = stationLines[station];
       
-      if(stationLine == null || stationLine == "interchange"){
-        if(i > 0 && i < path.length - 1){
-          // if(stationLines[path[i-1]] == "interchange" && i-2 >0){
-          //   colorPath = [...colorPath, stationLines[path[i-2]]]
-          // }
-          // else if(stationLines[path[i+1]] != "interchange" && i+2 == 0 && i+1 < path.length-1 ){
-          //   colorPath = [...colorPath, stationLines[path[i+1]]]
-          // }
-          // else{
-            colorPath = [...colorPath, stationLines[path[i-1]]]
-          // }
+      if(stationLine == null || (stationLine == "interchange")){
+        let nextStationIdx = i+1;
+        if (i === 0) {
+            currentLine = stationLines[path[i+1]]
+        }
+        while(stationLines[path[nextStationIdx]] == "interchange" && nextStationIdx < path.length-1){
+          nextStationIdx++;
+        }
+        if(nextStationIdx < path.length){
+          colorPath = [...colorPath, stationLines[path[nextStationIdx]]]
         }
         continue;
       }
+
       colorPath = [...colorPath, stationLine]
-      // If this is the first station, set the current line
+
       if (i === 0) {
         currentLine = stationLine;
         continue;
       }
+
       
       // Check if the line changed
       if (stationLine !== currentLine) {
         interchanges++;
+        if(path[i-1] == undefined){
+          console.log("path", path)
+        }
         interChangeStations.push(path[i-1])
         lineChangeColors.push(stationLine);
         currentLine = stationLine;
