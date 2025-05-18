@@ -7,6 +7,9 @@ PODS:
   - FBLazyVector (0.78.1)
   - fmt (11.0.2)
   - glog (0.3.5)
+  - Google-Mobile-Ads-SDK (12.3.0):
+    - GoogleUserMessagingPlatform (>= 1.1)
+  - GoogleUserMessagingPlatform (2.7.0)
   - hermes-engine (0.78.1):
     - hermes-engine/Pre-built (= 0.78.1)
   - hermes-engine/Pre-built (0.78.1)
@@ -1263,6 +1266,8 @@ PODS:
     - Yoga
   - react-native-maps (1.20.1):
     - React-Core
+  - react-native-splash-screen (3.3.0):
+    - React-Core
   - React-NativeModulesApple (0.78.1):
     - glog
     - hermes-engine
@@ -1596,6 +1601,29 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - RNGoogleMobileAds (15.2.0):
+    - DoubleConversion
+    - glog
+    - Google-Mobile-Ads-SDK (= 12.3.0)
+    - GoogleUserMessagingPlatform (= 2.7.0)
+    - hermes-engine
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - RNReanimated (3.17.5):
     - DoubleConversion
     - glog
@@ -1769,6 +1797,7 @@ DEPENDENCIES:
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - fmt (from `../node_modules/react-native/third-party-podspecs/fmt.podspec`)
   - glog (from `../node_modules/react-native/third-party-podspecs/glog.podspec`)
+  - Google-Mobile-Ads-SDK
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
   - RCT-Folly (from `../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)
   - RCT-Folly/Fabric (from `../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)
@@ -1804,6 +1833,7 @@ DEPENDENCIES:
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
   - "react-native-geolocation (from `../node_modules/@react-native-community/geolocation`)"
   - react-native-maps (from `../node_modules/react-native-maps`)
+  - react-native-splash-screen (from `../node_modules/react-native-splash-screen`)
   - React-NativeModulesApple (from `../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)
   - React-perflogger (from `../node_modules/react-native/ReactCommon/reactperflogger`)
   - React-performancetimeline (from `../node_modules/react-native/ReactCommon/react/performance/timeline`)
@@ -1836,12 +1866,15 @@ DEPENDENCIES:
   - "RNCPushNotificationIOS (from `../node_modules/@react-native-community/push-notification-ios`)"
   - RNFS (from `../node_modules/react-native-fs`)
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
+  - RNGoogleMobileAds (from `../node_modules/react-native-google-mobile-ads`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNSVG (from `../node_modules/react-native-svg`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
   trunk:
+    - Google-Mobile-Ads-SDK
+    - GoogleUserMessagingPlatform
     - SocketRocket
 
 EXTERNAL SOURCES:
@@ -1926,6 +1959,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-community/geolocation"
   react-native-maps:
     :path: "../node_modules/react-native-maps"
+  react-native-splash-screen:
+    :path: "../node_modules/react-native-splash-screen"
   React-NativeModulesApple:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios"
   React-perflogger:
@@ -1990,6 +2025,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-fs"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
+  RNGoogleMobileAds:
+    :path: "../node_modules/react-native-google-mobile-ads"
   RNReanimated:
     :path: "../node_modules/react-native-reanimated"
   RNSVG:
@@ -2005,6 +2042,8 @@ SPEC CHECKSUMS:
   FBLazyVector: bba368dacede4c9dec7a58c9be5a2d3e9ea30cc7
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: eb93e2f488219332457c3c4eafd2738ddc7e80b8
+  Google-Mobile-Ads-SDK: 01b1b77e0bdba8b4027ae62e9bd52e5a95d930aa
+  GoogleUserMessagingPlatform: a8b56893477f67212fbc8411c139e61d463349f5
   hermes-engine: f493b0a600aed5dc06532141603688a30a5b2f61
   RCT-Folly: e78785aa9ba2ed998ea4151e314036f6c49e6d82
   RCTDeprecation: 082fbc90409015eac1366795a0b90f8b5cb28efe
@@ -2038,6 +2077,7 @@ SPEC CHECKSUMS:
   React-microtasksnativemodule: b740ebae7fad70aa78bc24cc0dfc15ac9637b6eb
   react-native-geolocation: 66ddfd59066bb9365d0899967adc0a2cf2d0e6b2
   react-native-maps: 9febd31278b35cd21e4fad2cf6fa708993be5dab
+  react-native-splash-screen: 95994222cc95c236bd3cdc59fe45ed5f27969594
   React-NativeModulesApple: af0571ac115d09c9a669ed45ce6a4ca960598a2d
   React-perflogger: 26d07766b033f84559bd520e949453dba8bf1cd8
   React-performancetimeline: 0f3e0b6e2152951257bd8c90f95d527cf4316fa8
@@ -2070,11 +2110,12 @@ SPEC CHECKSUMS:
   RNCPushNotificationIOS: 6c4ca3388c7434e4a662b92e4dfeeee858e6f440
   RNFS: 89de7d7f4c0f6bafa05343c578f61118c8282ed8
   RNGestureHandler: 8b1080a6db0be82dbca18550d6212b885bfab6b2
+  RNGoogleMobileAds: 7cb5107d514ea851c749bdec6fa3b340f5448310
   RNReanimated: 505a98a0122d5e3bbeb0fb91e93dfb67d8112b84
   RNSVG: 8126581b369adf6a0004b6a6cab1a55e3002d5b0
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: dea3cbe52f93ef8f722493a505c1add295fe7fba
 
-PODFILE CHECKSUM: abee41ba385583aaf2d8d2dd9cbd7e351dbc86f1
+PODFILE CHECKSUM: d624732ff22e8e440221141f79cabf869df493d3
 
 COCOAPODS: 1.15.2

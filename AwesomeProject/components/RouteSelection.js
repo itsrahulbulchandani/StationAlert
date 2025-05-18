@@ -6,10 +6,13 @@ import {
   FlatList,
   StyleSheet,
   Dimensions,
+  SafeAreaView,
+  Platform,
 } from 'react-native';
 import {TabContext} from '../App';
 import stationsFromKeys from './stationsFromKeys';
 import { lightenColor } from '../utilities/helper';
+import { AdBanner } from '../src/components/AdBanner';
 const { width } = Dimensions.get('window');
 
 // Keeping pastelColors as a fallback
@@ -19,7 +22,7 @@ const pastelColors = [
 
 const RouteSelection = ({onClose}) => {
   const {selectedRoute, routesFound, setSelectedRoute, setActiveTab, handleSetAlert} = useContext(TabContext);
-  const [expandedIndex, setExpandedIndex] = useState(null);
+  const [expandedIndex, setExpandedIndex] = useState(0);
 
   const toggleExpand = index => {
     setExpandedIndex(expandedIndex === index ? null : index);
@@ -128,21 +131,24 @@ const RouteSelection = ({onClose}) => {
   };
 
   return (
-    <View style={styles.safeArea}>
-      <View style={styles.headerRow}>
-        <Text style={styles.header}>Route Details</Text>
-        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-          <Text style={styles.closeButtonText}>×</Text>
-        </TouchableOpacity>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Route Details</Text>
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <Text style={styles.closeButtonText}>×</Text>
+          </TouchableOpacity>
+        </View>
+        <FlatList
+          data={routesFound ? routesFound : []}
+          keyExtractor={(_, index) => index.toString()}
+          renderItem={renderRoute}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+        />
+        <AdBanner />
       </View>
-      <FlatList
-        data={routesFound ? routesFound : []}
-        keyExtractor={(_, index) => index.toString()}
-        renderItem={renderRoute}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-      />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -151,20 +157,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F3F6F9',
   },
-  headerRow: {
+  container: {
+    flex: 1,
+  },
+  header: {
+    backgroundColor: '#F3F6F9',
+    paddingTop: 32,
+    paddingBottom: 18,
+    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 48,
-    paddingBottom: 18,
-    backgroundColor: 'transparent',
+    borderBottomWidth: 0,
+    elevation: 0,
   },
-  header: {
-    fontSize: 28,
-    fontWeight: 'bold',
+  headerTitle: {
     color: '#222B45',
+    fontSize: 32,
+    fontWeight: 'bold',
     letterSpacing: 0.5,
+    textAlign: 'left',
+    fontFamily: 'System',
   },
   closeButton: {
     width: 38,
@@ -186,8 +199,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   listContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 32,
+    paddingHorizontal: 20,
+    paddingBottom: 80,
   },
   routeCard: {
     backgroundColor: '#fff',

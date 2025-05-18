@@ -4,11 +4,12 @@ import {
   PinchGestureHandler,
   State,
 } from 'react-native-gesture-handler';
-import React, {useState, useRef, useEffect, useContext} from 'react';
+import React, {useState, useRef, useEffect, useContext, useMemo} from 'react';
 import {
   StyleSheet,
   View,
   Text,
+  TouchableOpacity,
 } from 'react-native';
 import RNFS from 'react-native-fs';
 import MapView, {Marker, Polyline} from 'react-native-maps';
@@ -38,7 +39,7 @@ const RouteMapScreen = () => {
   const [showMarkers, setShowMarkers] = useState(false);
   const [markerData, setMarkerData] = useState([]);
   const [currentZoom, setCurrentZoom] = useState(10); // Default zoom level
-  const { selectedRoute=[] } = useContext(TabContext);
+  const { selectedRoute=[], setSelectedRoute } = useContext(TabContext);
 
   const lastScale = useRef(1);
   const lastTranslateX = useRef(0);
@@ -289,19 +290,19 @@ const RouteMapScreen = () => {
   
   console.log("scale",scale)
 
+  // Memoize stations to prevent unnecessary re-renders
+  const memoizedStations = useMemo(() => {
+    return stations;
+  }, [stations]);
+
   const TestMapScreen = () => {
     return (
       <GestureHandlerRootView style={{flex: 1}}>
         <PinchGestureHandler>
-          {/* // onGestureEvent={onPinchGestureEvent} */}
-          {/* // onHandlerStateChange={onPinchHandlerStateChange}> */}
           <PanGestureHandler>
-            {/* // onGestureEvent={onPanGestureEvent} */}
-            {/* // onHandlerStateChange={onPanHandlerStateChange}> */}
             <MapView
-              style={{flex: 1}}
+              style={{flex: 1, margin: 10}}
               cameraZoomRange={CameraZoomRange}
-              // onRegionChangeComplete={onRegionChangeComplete}
               initialRegion={{
                 latitude: 28.6139,
                 longitude: 77.209,
@@ -333,28 +334,10 @@ const RouteMapScreen = () => {
                 {selectedRoute?.path && selectedRoute?.path?.length > 0 ? 
                  (
                   selectedRoute?.path?.map((marker,index) =>{
-                    let stationFound =stations?.find(
-                      p => marker.toLowerCase().replace(/\s+/g, '') === p.name.toLowerCase().replace(/\s+/g, '')
+                    let stationFound = memoizedStations?.find(
+                      p => marker == p.id
                     )
                     if (stationFound) {
-                      // Special handling for interchange stations only
-                      // if (marker.interchange === "TRUE") {
-                      //   return (
-                      //     <Marker
-                      //       key={marker.id}
-                      //       coordinate={marker.coords}
-                      //       title={marker.name}
-                      //       anchor={{x: 0.5, y: 0.5}}>
-                      //       <InterchangeMarker
-                      //         name={marker.name}
-                      //         color={marker.color_code}
-                      //       />
-                      //     </Marker>
-                      //   );
-                      // }
-
-                      // Keep existing behavior for all other stations
-                      let x = selectedRoute?.path?.indexOf(marker.name);
                       return (
                         <Marker
                           index={index}
@@ -362,22 +345,21 @@ const RouteMapScreen = () => {
                           coordinate={stationFound.coords}
                           title={stationFound.name}
                           pinColor={"#000000"}>
-                            <CustomMarkerAnimated
-                              color={"red"}
-                              size={12}
-                              borderWidth={2}
-                              borderColor="#000000"
-                              index={index}
-                              totalMarkers={selectedRoute?.path?.length || 1}
-                            />
+                          <CustomMarkerAnimated
+                            color={"red"}
+                            size={12}
+                            borderWidth={2}
+                            borderColor="#000000"
+                            index={index}
+                            totalMarkers={selectedRoute?.path?.length || 1}
+                          />
                         </Marker>
                       );
                     }
                     return null;
                   })
                 ) : 
-                stations.map(marker => {
-                  // Only modify interchange stations
+                memoizedStations.map(marker => {
                   if (marker.interchange === "TRUE") {
                     return (
                       <Marker
@@ -393,7 +375,6 @@ const RouteMapScreen = () => {
                     );
                   }
                   
-                  // Keep existing behavior for all other stations
                   return (
                     <Marker
                       key={marker.id}
@@ -422,15 +403,39 @@ const RouteMapScreen = () => {
       // Process your data into a format ready for markers
       const markers = [];
      
-      setMarkerData(stations);
+      setMarkerData(memoizedStations);
     }
-  }, [stationsLoaded, loading]);
+  }, [stationsLoaded, loading, memoizedStations]);
+
+  // Memoize the TestMapScreen component to prevent unnecessary re-renders
+  const MemoizedTestMapScreen = useMemo(() => {
+    return TestMapScreen();
+  }, [shapes, memoizedStations, selectedRoute?.path?.length, isMaxZoom]);
+
+  const handleClearRoute = () => {
+    if (setSelectedRoute) {
+      setSelectedRoute([]); // Clear the selected route
+      // Force rerender by updating showMarkers
+      setShowMarkers(false);
+      setTimeout(() => {
+        setShowMarkers(true);
+      }, 50);
+    }
+  };
 
   return (
     <>
       <View style={styles.headerSpace} />
-      {stationsLoaded && !loading && showMarkers && TestMapScreen()}
-      {/* {stationsLoaded && !loading && TestMapScreen()} */}
+      {stationsLoaded && !loading && showMarkers && MemoizedTestMapScreen}
+      {selectedRoute?.path && selectedRoute?.path?.length > 0 && (
+        <TouchableOpacity 
+          style={styles.clearButton}
+          onPress={handleClearRoute}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.clearButtonText}>Clear Route</Text>
+        </TouchableOpacity>
+      )}
     </>
   );
 };
@@ -439,6 +444,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    padding: 10,
   },
   headerSpace: {
     height: 1,
@@ -446,6 +452,29 @@ const styles = StyleSheet.create({
   mapContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    padding: 10,
+    margin: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  clearButton: {
+    position: 'absolute',
+    bottom: 30,
+    right: 30,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 25,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
+  clearButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 });
 

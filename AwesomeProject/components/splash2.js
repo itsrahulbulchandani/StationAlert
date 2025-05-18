@@ -10,13 +10,10 @@ import {
   AppState,
   Alert,
   PermissionsAndroid,
-  Dimensions,
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import PushNotificationIOS from '@react-native-community/push-notification-ios';
 import Geolocation from '@react-native-community/geolocation';
-import { AdBanner } from './src/components/AdBanner';
-import './src/config/admob';
 
 import AlertScreen from './components/AlertScreen';
 import RouteMapScreen from './components/RouteMapScreen';
@@ -26,15 +23,6 @@ import stations from './components/stations';
 import SplashScreen from './components/SplashScreen';
 
 export const TabContext = createContext();
-
-// Add screen dimension utilities
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const scale = SCREEN_WIDTH / 375; // Using 375 as base width (iPhone X)
-
-const normalize = (size) => {
-  const newSize = size * scale;
-  return Math.round(Platform.OS === 'ios' ? newSize : newSize - 2);
-};
 
 // Haversine formula to calculate distance between two points
 function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
@@ -56,8 +44,7 @@ function App() {
   const [routesFound, setRoutesFound] = useState([]);
   const [activeTab, setActiveTab] = useState('search route');
   const [alertActive, setAlertActive] = useState(false);
-  const [showSplash, setShowSplash] = useState(false);
-  const [adError, setAdError] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
   const watchId = useRef(null);
   const appState = useRef(AppState.currentState);
 
@@ -369,12 +356,12 @@ function App() {
           translucent={false} 
         />
         
-        {showSplash ? (
+        {true ? (
           <SplashScreen onFinish={() => setShowSplash(false)} />
         ) : (
           <SafeAreaView style={styles.safeArea}>
             <View style={styles.header}>
-              <Text style={styles.headerTitle}>Next Stop</Text>
+              <Text style={styles.headerTitle}>Station Alert</Text>
             </View>
             
             <View style={styles.tabContainer}>
@@ -407,12 +394,41 @@ function App() {
                   Route Map
                 </Text>
               </TouchableOpacity>
+              
+              {/* <TouchableOpacity
+                style={[
+                  styles.tabButton,
+                  activeTab === 'map' && styles.activeTabButton,
+                ]}
+                onPress={() => setActiveTab('map')}>
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === 'map' && styles.activeTabText,
+                  ]}>
+                  Map
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.tabButton,
+                  activeTab === 'alert' && styles.activeTabButton,
+                ]}
+                onPress={() => setActiveTab('alert')}>
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === 'alert' && styles.activeTabText,
+                  ]}>
+                  {alertActive ? '🔔 Alert' : 'Alert'}
+                </Text>
+              </TouchableOpacity> */}
             </View>
             
             <View style={styles.content}>
               {renderScreen()}
             </View>
-            {!adError && activeTab !== 'search route' && <AdBanner />}
           </SafeAreaView>
         )}
       </TabContext.Provider>
@@ -432,16 +448,16 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: softBg,
-    paddingTop: normalize(24),
-    paddingBottom: normalize(16),
-    paddingHorizontal: normalize(24),
+    paddingTop: 32,
+    paddingBottom: 18,
+    paddingHorizontal: 24,
     alignItems: 'flex-start',
     borderBottomWidth: 0,
     elevation: 0,
   },
   headerTitle: {
     color: '#222B45',
-    fontSize: normalize(32),
+    fontSize: 32,
     fontWeight: 'bold',
     letterSpacing: 0.5,
     textAlign: 'left',
@@ -449,11 +465,11 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: 'row',
-    height: normalize(48),
+    height: 48,
     backgroundColor: softBg,
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: normalize(8),
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E4EA',
   },
@@ -464,14 +480,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderBottomWidth: 3,
     borderBottomColor: 'transparent',
-    marginHorizontal: normalize(8),
+    marginHorizontal: 8,
   },
   activeTabButton: {
     borderBottomColor: tabActive,
     backgroundColor: 'transparent',
   },
   tabText: {
-    fontSize: normalize(16),
+    fontSize: 16,
     fontWeight: '600',
     color: tabInactive,
     textAlign: 'center',
@@ -485,7 +501,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: softBg,
     zIndex: -1,
-    paddingTop: normalize(8),
+    paddingTop: 8,
   },
 });
 

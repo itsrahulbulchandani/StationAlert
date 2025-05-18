@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useContext} from 'react';
+import React, {useState, useEffect, useContext, useRef} from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   TextInput,
   FlatList,
   Dimensions,
+  LayoutAnimation,
 } from 'react-native';
 import {metroStation} from './metroRoutes';
 import {colorLines, colorLinesWithIds, graph, graphWithIds} from './graph';
@@ -18,6 +19,8 @@ import {TabContext} from '../App';
 import {findAllRoutes2} from '../utilities/helper';
 import RouteSelection from './RouteSelection';
 import stationsInverted from './stations_inverted';
+import { SquareAd } from '../src/components/SquareAd';
+import { AdBanner } from '../src/components/AdBanner';
 
 const { width } = Dimensions.get('window');
 
@@ -42,6 +45,9 @@ const SearchRoutesScreen = () => {
   const [filteredFromStations, setFilteredFromStations] = useState(metroStation);
   const [filteredToStations, setFilteredToStations] = useState(metroStation);
   const {setActiveTab, setSelectedRoute, setRoutesFound} = useContext(TabContext);
+
+  const [showSquareAd, setShowSquareAd] = useState(false);
+  const contentRef = useRef(null);
 
   // Filter stations based on search query
   useEffect(() => {
@@ -128,48 +134,71 @@ const SearchRoutesScreen = () => {
     );
   };
 
+  // Check if there's space for the square ad
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.measure((x, y, width, height, pageX, pageY) => {
+        const screenHeight = Dimensions.get('window').height;
+        const availableSpace = screenHeight - (pageY + height);
+        // MEDIUM_RECTANGLE ad is 300x250, add some padding
+        setShowSquareAd(availableSpace >= 270);
+      });
+    }
+  }, [fromStation, toStation]); // Recalculate when stations change
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.container}>
-        <Text style={styles.title}>Find Train Routes</Text>
+        <View ref={contentRef}>
+          <Text style={styles.title}>Find Train Routes</Text>
 
-        {/* From Station Button */}
-        <Text style={styles.label}>From Station</Text>
-        <TouchableOpacity
-          style={styles.selectionButton}
-          onPress={openFromModal}>
-          <Text
-            style={[
-              styles.selectionButtonText,
-              !fromStation && styles.placeholderText,
-            ]}>
-            {fromStation || 'Select From Station'}
-          </Text>
-        </TouchableOpacity>
+          {/* From Station Button */}
+          <Text style={styles.label}>From Station</Text>
+          <TouchableOpacity
+            style={styles.selectionButton}
+            onPress={openFromModal}>
+            <Text
+              style={[
+                styles.selectionButtonText,
+                !fromStation && styles.placeholderText,
+              ]}>
+              {fromStation || 'Select From Station'}
+            </Text>
+          </TouchableOpacity>
 
-        {/* To Station Button */}
-        <Text style={styles.label}>To Station</Text>
-        <TouchableOpacity
-          style={styles.selectionButton}
-          onPress={openToModal}>
-          <Text
-            style={[
-              styles.selectionButtonText,
-              !toStation && styles.placeholderText,
-            ]}>
-            {toStation || 'Select To Station'}
-          </Text>
-        </TouchableOpacity>
+          {/* To Station Button */}
+          <Text style={styles.label}>To Station</Text>
+          <TouchableOpacity
+            style={styles.selectionButton}
+            onPress={openToModal}>
+            <Text
+              style={[
+                styles.selectionButtonText,
+                !toStation && styles.placeholderText,
+              ]}>
+              {toStation || 'Select To Station'}
+            </Text>
+          </TouchableOpacity>
 
-        {/* Search Button */}
-        <TouchableOpacity
-          style={[styles.primaryButton, (!fromStation || !toStation) && styles.primaryButtonDisabled]}
-          onPress={handleSearch}
-          disabled={!fromStation || !toStation}
-        >
-          <Text style={styles.primaryButtonText}>Search Routes</Text>
-        </TouchableOpacity>
+          {/* Search Button */}
+          <TouchableOpacity
+            style={[styles.primaryButton, (!fromStation || !toStation) && styles.primaryButtonDisabled]}
+            onPress={handleSearch}
+            disabled={!fromStation || !toStation}
+          >
+            <Text style={styles.primaryButtonText}>Search Routes</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Show square ad if space available, otherwise show banner ad */}
+        {showSquareAd ? (
+          <View style={styles.squareAdContainer}>
+            <SquareAd />
+          </View>
+        ) : (
+          <AdBanner />
+        )}
 
         {/* FROM Modal with Searchable List */}
         <Modal
@@ -260,8 +289,8 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 24,
     backgroundColor: softBg,
+    padding: 20,
   },
   title: {
     fontSize: 28,
@@ -327,13 +356,14 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: 'center', // Center vertically
+    alignItems: 'center', // Center horizontally
     backgroundColor: 'rgba(0,0,0,0.18)',
   },
   modalContent: {
     backgroundColor: cardBg,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderRadius: 24, // Increase border radius for rounder corners
+    width: '90%', // Set width to 90% of the screen
     paddingTop: 24,
     paddingBottom: 12,
     paddingHorizontal: 0,
@@ -398,6 +428,10 @@ const styles = StyleSheet.create({
     color: accentColor,
     fontSize: 16,
     fontWeight: '700',
+  },
+  squareAdContainer: {
+    marginTop: 20,
+    alignItems: 'center',
   },
 });
 
