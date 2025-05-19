@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, Dimensions } from 'react-native';
 import { BannerAd, BannerAdSize } from 'react-native-google-mobile-ads';
 import { bannerAdUnitId } from '../config/admob';
 
@@ -32,6 +32,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     padding: 10,
     marginVertical: 10,
+    width: '100%',
+    alignSelf: 'center',
     // Add shadow for iOS
     ...Platform.select({
       ios: {
