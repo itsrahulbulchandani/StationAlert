@@ -10,6 +10,8 @@ import {
   View,
   Text,
   TouchableOpacity,
+  Platform,
+  PermissionsAndroid,
 } from 'react-native';
 import RNFS from 'react-native-fs';
 import MapView, {Marker, Polyline} from 'react-native-maps';
@@ -19,6 +21,7 @@ import {
 } from '../utilities/helper';
 import CustomMarkerAnimated from './CustomMarkerAnimated';
 import { TabContext } from '../App';
+import Geolocation from '@react-native-community/geolocation';
 
 // const {width, height} = Dimensions.get('window');
 
@@ -40,6 +43,17 @@ const RouteMapScreen = () => {
   const [markerData, setMarkerData] = useState([]);
   const [currentZoom, setCurrentZoom] = useState(10); // Default zoom level
   const { selectedRoute=[], setSelectedRoute } = useContext(TabContext);
+  const [currentLocation, setCurrentLocation] = useState(null);
+  const mapRef = useRef(null);
+  const hasRequestedLocation = useRef(false);
+  const hasAnimatedToRoute = useRef(false);
+  const [mapReady, setMapReady] = useState(false);
+  const [initialRegion, setInitialRegion] = useState({
+    latitude: 28.6139,
+    longitude: 77.209,
+    latitudeDelta: 0.4,
+    longitudeDelta: 0.4,
+  });
 
   const lastScale = useRef(1);
   const lastTranslateX = useRef(0);
@@ -183,7 +197,7 @@ const RouteMapScreen = () => {
         stops.push(station);
       }
       setStations(stops);
-      console.log(localStations)
+      // console.log(localStations)
 
     } catch (error) {
       console.error('Error reading stops file:', error);
@@ -295,34 +309,140 @@ const RouteMapScreen = () => {
     return stations;
   }, [stations]);
 
+  const requestLocationPermission = async () => {
+    if (Platform.OS === 'ios') {
+      Geolocation.requestAuthorization();
+      return true;
+    }
+
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        {
+          title: "Location Permission",
+          message: "This app needs access to your location",
+          buttonNeutral: "Ask Me Later",
+          buttonNegative: "Cancel",
+          buttonPositive: "OK"
+        }
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    } catch (err) {
+      console.warn(err);
+      return false;
+    }
+  };
+
+  const getCurrentLocation = () => {
+    if (hasRequestedLocation.current && currentLocation) {
+      // If we already have location, just animate to it
+      mapRef.current?.animateToRegion({
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }, 1000);
+      return;
+    }
+
+    console.log("Getting current location...");
+    requestLocationPermission().then(hasPermission => {
+      console.log("Location permission:", hasPermission);
+      if (hasPermission) {
+        hasRequestedLocation.current = true;
+        Geolocation.getCurrentPosition(
+          position => {
+            const { latitude, longitude } = position.coords;
+            console.log("Got location:", { latitude, longitude });
+            const newLocation = { latitude, longitude };
+            
+            // First set the location
+            setCurrentLocation(newLocation);
+            
+            // Then animate to it after a short delay to ensure state is updated
+            requestAnimationFrame(() => {
+              mapRef.current?.animateToRegion({
+                latitude: newLocation.latitude,
+                longitude: newLocation.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              }, 1000);
+            });
+          },
+          error => {
+            console.log("Location error:", error);
+            hasRequestedLocation.current = false;
+          },
+          { 
+            enableHighAccuracy: true, 
+            timeout: 20000, 
+            maximumAge: 1000 
+          }
+        );
+      }
+    });
+  };
+
+  // Function to get route coordinates
+  const getRouteCoordinates = (routePath) => {
+    if (!routePath || !memoizedStations) return null;
+
+    const coordinates = routePath.map(stationId => {
+      const station = memoizedStations.find(s => s.id == stationId);
+      return station ? station.coords : null;
+    }).filter(coord => coord !== null);
+
+    console.log('Route coordinates:', coordinates);
+    return coordinates.length > 0 ? coordinates : null;
+  };
+
+  // Effect to animate to route when selected
+  useEffect(() => {
+    if (selectedRoute?.path && selectedRoute?.path?.length > 0 && mapReady) {
+      console.log('Selected route changed, path:', selectedRoute.path);
+      const coordinates = getRouteCoordinates(selectedRoute.path);
+      
+      if (coordinates && mapRef.current) {
+        console.log('Attempting to fit coordinates');
+        // Add a small delay to ensure map is ready
+        setTimeout(() => {
+          mapRef.current?.fitToCoordinates(coordinates, {
+            edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+            animated: true,
+            duration: 1000
+          });
+        }, 500);
+      }
+    }
+  }, [selectedRoute?.path, mapReady]);
+
   const TestMapScreen = () => {
     return (
       <GestureHandlerRootView style={{flex: 1}}>
         <PinchGestureHandler>
           <PanGestureHandler>
             <MapView
+              ref={mapRef}
               style={{flex: 1, margin: 10}}
               cameraZoomRange={CameraZoomRange}
-              initialRegion={{
-                latitude: 28.6139,
-                longitude: 77.209,
-                latitudeDelta: 0.4,
-                longitudeDelta: 0.4,
-              }}>
+              initialRegion={initialRegion}
+              onMapReady={() => {
+                console.log('Map is ready');
+                setMapReady(true);
+              }}
+            >
               <>
-                <Marker
-                  key={"test"}
-                  coordinate={{
-                    latitude: 28.650059,
-                    longitude: 77.337608,}}
-                  title={"testing data"}
-                  style={{width:"200px"}}
-                  pinColor={"#fff"}>
-                    <CustomMarker
-                      size={4}
-                      borderWidth={0.5}
-                    />
-                </Marker>
+                {currentLocation && (
+                  <Marker
+                    coordinate={currentLocation}
+                    title="You are here"
+                    description="Your current location"
+                  >
+                    <View style={styles.currentLocationMarker}>
+                      <View style={styles.currentLocationInner} />
+                    </View>
+                  </Marker>
+                )}
                 {Object.entries(shapes).map(([shapeId, coordinates]) => (
                   <Polyline
                     key={shapeId}
@@ -410,11 +530,12 @@ const RouteMapScreen = () => {
   // Memoize the TestMapScreen component to prevent unnecessary re-renders
   const MemoizedTestMapScreen = useMemo(() => {
     return TestMapScreen();
-  }, [shapes, memoizedStations, selectedRoute?.path?.length, isMaxZoom]);
+  }, [shapes, memoizedStations, selectedRoute?.path?.length, isMaxZoom, currentLocation]);
 
   const handleClearRoute = () => {
     if (setSelectedRoute) {
       setSelectedRoute([]); // Clear the selected route
+      hasAnimatedToRoute.current = false; // Reset the animation flag
       // Force rerender by updating showMarkers
       setShowMarkers(false);
       setTimeout(() => {
@@ -426,7 +547,16 @@ const RouteMapScreen = () => {
   return (
     <>
       <View style={styles.headerSpace} />
-      {stationsLoaded && !loading && showMarkers && MemoizedTestMapScreen}
+      {stationsLoaded && !loading && showMarkers && (
+        <TestMapScreen />
+      )}
+      <TouchableOpacity 
+        style={styles.locationButton}
+        onPress={getCurrentLocation}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.locationButtonText}>📍</Text>
+      </TouchableOpacity>
       {selectedRoute?.path && selectedRoute?.path?.length > 0 && (
         <TouchableOpacity 
           style={styles.clearButton}
@@ -475,6 +605,49 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 14,
+  },
+  locationButton: {
+    position: 'absolute',
+    bottom: 30,
+    left: 30,
+    backgroundColor: 'white',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    zIndex: 1000,
+  },
+  locationButtonText: {
+    fontSize: 24,
+  },
+  currentLocationMarker: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(33, 150, 243, 0.3)',
+    borderWidth: 2,
+    borderColor: '#2196F3',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  currentLocationInner: {
+    width: 15,
+    height: 15,
+    borderRadius: 7.5,
+    backgroundColor: '#2196F3',
+    borderWidth: 2,
+    borderColor: 'white',
   },
 });
 

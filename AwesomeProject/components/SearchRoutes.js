@@ -16,6 +16,7 @@ import {
 import {metroStation} from './metroRoutes';
 import {colorLines, colorLinesWithIds, graph, graphWithIds} from './graph';
 import {TabContext} from '../App';
+import {useTheme} from '../src/context/ThemeContext';
 import {findAllRoutes2} from '../utilities/helper';
 import RouteSelection from './RouteSelection';
 import stationsInverted from './stations_inverted';
@@ -24,12 +25,8 @@ import { AdBanner } from '../src/components/AdBanner';
 
 const { width } = Dimensions.get('window');
 
-const accentColor = '#2EC4B6';
-const softBg = '#F3F6F9';
-const cardBg = '#fff';
-const borderColor = '#E0E4EA';
-
 const SearchRoutesScreen = () => {
+  const { theme } = useTheme();
   const [allStations] = useState(metroStation);
   const [fromStation, setFromStation] = useState('');
   const [toStation, setToStation] = useState('');
@@ -127,9 +124,9 @@ const SearchRoutesScreen = () => {
   const renderStationItem = (item, onSelect) => {
     return (
       <TouchableOpacity
-        style={styles.stationItem}
+        style={[styles.stationItem, { backgroundColor: theme.cardBackground }]}
         onPress={() => onSelect(item)}>
-        <Text style={styles.stationItemText}>{item}</Text>
+        <Text style={[styles.stationItemText, { color: theme.text }]}>{item}</Text>
       </TouchableOpacity>
     );
   };
@@ -147,35 +144,43 @@ const SearchRoutesScreen = () => {
   }, [fromStation, toStation]); // Recalculate when stations change
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.container}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.softBackground }]}>
+      <StatusBar barStyle={theme.statusBar.style} />
+      <View style={[styles.container, { backgroundColor: theme.softBackground }]}>
         <View ref={contentRef}>
-          <Text style={styles.title}>Find Train Routes</Text>
+          <Text style={[styles.title, { color: theme.headerTextColor }]}>Find Train Routes</Text>
 
           {/* From Station Button */}
-          <Text style={styles.label}>From Station</Text>
+          <Text style={[styles.label, { color: theme.labelColor }]}>From Station</Text>
           <TouchableOpacity
-            style={styles.selectionButton}
+            style={[styles.selectionButton, { 
+              backgroundColor: theme.cardBackground,
+              borderColor: theme.borderColor 
+            }]}
             onPress={openFromModal}>
             <Text
               style={[
                 styles.selectionButtonText,
-                !fromStation && styles.placeholderText,
+                { color: theme.headerTextColor },
+                !fromStation && { color: theme.tabBar.inactiveColor },
               ]}>
               {fromStation || 'Select From Station'}
             </Text>
           </TouchableOpacity>
 
           {/* To Station Button */}
-          <Text style={styles.label}>To Station</Text>
+          <Text style={[styles.label, { color: theme.labelColor }]}>To Station</Text>
           <TouchableOpacity
-            style={styles.selectionButton}
+            style={[styles.selectionButton, { 
+              backgroundColor: theme.cardBackground,
+              borderColor: theme.borderColor 
+            }]}
             onPress={openToModal}>
             <Text
               style={[
                 styles.selectionButtonText,
-                !toStation && styles.placeholderText,
+                { color: theme.headerTextColor },
+                !toStation && { color: theme.tabBar.inactiveColor },
               ]}>
               {toStation || 'Select To Station'}
             </Text>
@@ -183,7 +188,11 @@ const SearchRoutesScreen = () => {
 
           {/* Search Button */}
           <TouchableOpacity
-            style={[styles.primaryButton, (!fromStation || !toStation) && styles.primaryButtonDisabled]}
+            style={[
+              styles.primaryButton,
+              { backgroundColor: theme.accentColor },
+              (!fromStation || !toStation) && { backgroundColor: theme.tabBar.inactiveColor }
+            ]}
             onPress={handleSearch}
             disabled={!fromStation || !toStation}
           >
@@ -200,27 +209,34 @@ const SearchRoutesScreen = () => {
           <AdBanner />
         )}
 
-        {/* FROM Modal with Searchable List */}
+        {/* FROM Modal */}
         <Modal
           visible={showFromModal}
           animationType="slide"
           transparent={true}>
           <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Select From Station</Text>
-              {/* Search Input */}
-              <View style={styles.searchContainer}>
+            <View style={[styles.modalContent, { 
+              backgroundColor: theme.cardBackground 
+            }]}>
+              <Text style={[styles.modalTitle, { color: theme.headerTextColor }]}>
+                Select From Station
+              </Text>
+              <View style={[styles.searchContainer, { borderBottomColor: theme.borderColor }]}>
                 <TextInput
-                  style={styles.searchInput}
+                  style={[styles.searchInput, { 
+                    backgroundColor: theme.softBackground,
+                    borderColor: theme.borderColor,
+                    color: theme.text 
+                  }]}
                   placeholder="Search stations..."
                   value={fromSearchQuery}
                   onChangeText={setFromSearchQuery}
                   autoFocus={false}
                   clearButtonMode="while-editing"
-                  placeholderTextColor="#B0B4B8"
+                  placeholderTextColor={theme.tabBar.inactiveColor}
+                  fontSize={18}
                 />
               </View>
-              {/* Stations List */}
               <FlatList
                 data={filteredFromStations}
                 keyExtractor={item => item}
@@ -229,31 +245,45 @@ const SearchRoutesScreen = () => {
                 }
                 style={styles.stationsList}
               />
-              <TouchableOpacity style={styles.modalCancelButton} onPress={() => setShowFromModal(false)}>
-                <Text style={styles.modalCancelButtonText}>Cancel</Text>
+              <TouchableOpacity 
+                style={[styles.modalCancelButton, { 
+                  backgroundColor: theme.softBackground,
+                  borderColor: theme.borderColor 
+                }]} 
+                onPress={() => setShowFromModal(false)}>
+                <Text style={[styles.modalCancelButtonText, { color: theme.accentColor }]}>
+                  Cancel
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
 
-        {/* TO Modal with Searchable List */}
+        {/* TO Modal */}
         <Modal visible={showToModal} animationType="slide" transparent={true}>
           <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Select To Station</Text>
-              {/* Search Input */}
-              <View style={styles.searchContainer}>
+            <View style={[styles.modalContent, { 
+              backgroundColor: theme.cardBackground 
+            }]}>
+              <Text style={[styles.modalTitle, { color: theme.headerTextColor }]}>
+                Select To Station
+              </Text>
+              <View style={[styles.searchContainer, { borderBottomColor: theme.borderColor }]}>
                 <TextInput
-                  style={styles.searchInput}
+                  style={[styles.searchInput, { 
+                    backgroundColor: theme.softBackground,
+                    borderColor: theme.borderColor,
+                    color: theme.text 
+                  }]}
                   placeholder="Search stations..."
                   value={toSearchQuery}
                   onChangeText={setToSearchQuery}
                   autoFocus={false}
                   clearButtonMode="while-editing"
-                  placeholderTextColor="#B0B4B8"
+                  placeholderTextColor={theme.tabBar.inactiveColor}
+                  fontSize={18}
                 />
               </View>
-              {/* Stations List */}
               <FlatList
                 data={filteredToStations}
                 keyExtractor={item => item}
@@ -262,8 +292,15 @@ const SearchRoutesScreen = () => {
                 }
                 style={styles.stationsList}
               />
-              <TouchableOpacity style={styles.modalCancelButton} onPress={() => setShowToModal(false)}>
-                <Text style={styles.modalCancelButtonText}>Cancel</Text>
+              <TouchableOpacity 
+                style={[styles.modalCancelButton, { 
+                  backgroundColor: theme.softBackground,
+                  borderColor: theme.borderColor 
+                }]} 
+                onPress={() => setShowToModal(false)}>
+                <Text style={[styles.modalCancelButtonText, { color: theme.accentColor }]}>
+                  Cancel
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -285,17 +322,14 @@ const SearchRoutesScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: softBg,
   },
   container: {
     flex: 1,
-    backgroundColor: softBg,
     padding: 20,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#222B45',
     marginBottom: 32,
     textAlign: 'left',
     letterSpacing: 0.5,
@@ -303,18 +337,15 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#7B8794',
     marginBottom: 8,
     marginTop: 8,
     textAlign: 'left',
   },
   selectionButton: {
-    backgroundColor: cardBg,
     paddingVertical: 18,
     paddingHorizontal: 18,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: borderColor,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -324,29 +355,18 @@ const styles = StyleSheet.create({
   },
   selectionButtonText: {
     fontSize: 17,
-    color: '#222B45',
     fontWeight: '600',
   },
-  placeholderText: {
-    color: '#B0B4B8',
-    fontWeight: '400',
-  },
   primaryButton: {
-    backgroundColor: accentColor,
     borderRadius: 22,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 18,
     marginBottom: 8,
-    shadowColor: accentColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.10,
     shadowRadius: 6,
     elevation: 2,
-  },
-  primaryButtonDisabled: {
-    backgroundColor: '#B0B4B8',
-    shadowColor: '#B0B4B8',
   },
   primaryButtonText: {
     color: '#fff',
@@ -356,14 +376,13 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    justifyContent: 'center', // Center vertically
-    alignItems: 'center', // Center horizontally
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.18)',
   },
   modalContent: {
-    backgroundColor: cardBg,
-    borderRadius: 24, // Increase border radius for rounder corners
-    width: '90%', // Set width to 90% of the screen
+    borderRadius: 24,
+    width: '90%',
     paddingTop: 24,
     paddingBottom: 12,
     paddingHorizontal: 0,
@@ -375,58 +394,47 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
-    color: '#222B45',
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 16,
   },
   searchContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 10,
+    paddingHorizontal: 24,
+    paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: borderColor,
   },
   searchInput: {
-    height: 44,
-    backgroundColor: softBg,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: '#222B45',
+    height: 52,
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    fontSize: 18,
     borderWidth: 1,
-    borderColor: borderColor,
   },
   stationsList: {
     maxHeight: 400,
-    marginTop: 2,
+    marginTop: 4,
   },
   stationItem: {
-    paddingVertical: 18,
+    paddingVertical: 16,
     paddingHorizontal: 24,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: borderColor,
-    backgroundColor: cardBg,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   stationItemText: {
-    fontSize: 16,
-    color: '#222B45',
-    fontWeight: '500',
+    fontSize: 18,
   },
   modalCancelButton: {
-    marginTop: 10,
-    marginBottom: 10,
+    marginTop: 16,
+    marginBottom: 16,
     alignSelf: 'center',
-    backgroundColor: softBg,
-    borderRadius: 18,
-    paddingVertical: 10,
-    paddingHorizontal: 32,
+    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 36,
     borderWidth: 1,
-    borderColor: borderColor,
   },
   modalCancelButtonText: {
-    color: accentColor,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
   },
   squareAdContainer: {

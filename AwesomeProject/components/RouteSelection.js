@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import {TabContext} from '../App';
+import {useTheme} from '../src/context/ThemeContext';
 import stationsFromKeys from './stationsFromKeys';
 import { lightenColor } from '../utilities/helper';
 import { AdBanner } from '../src/components/AdBanner';
@@ -22,6 +23,7 @@ const pastelColors = [
 
 const RouteSelection = ({onClose}) => {
   const {selectedRoute, routesFound, setSelectedRoute, setActiveTab, handleSetAlert} = useContext(TabContext);
+  const { theme } = useTheme();
   const [expandedIndex, setExpandedIndex] = useState(0);
 
   const toggleExpand = index => {
@@ -34,10 +36,10 @@ const RouteSelection = ({onClose}) => {
     return (
       <TouchableOpacity
         onPress={() => toggleExpand(index)}
-        style={[styles.routeCard, isExpanded && styles.routeCardExpanded]}
+        style={[styles.routeCard, { backgroundColor: theme.cardBackground }, isExpanded && styles.routeCardExpanded]}
         activeOpacity={0.9}>
         <View style={styles.routeCardHeader}>
-          <Text style={styles.routeCardTitle}>
+          <Text style={[styles.routeCardTitle, { color: theme.headerTextColor }]}>
             {stationsFromKeys[item?.path[0]]} → {stationsFromKeys[item?.path[item?.path?.length - 1]]}
           </Text>
           
@@ -60,7 +62,7 @@ const RouteSelection = ({onClose}) => {
               </View>
             </View>
           ) : (
-            <Text style={styles.directRouteText}>Direct Route</Text>
+            <Text style={[styles.directRouteText, { color: theme.labelColor }]}>Direct Route</Text>
           )}
           
           <View style={styles.buttonRow}>
@@ -78,18 +80,22 @@ const RouteSelection = ({onClose}) => {
           </View>
           
           <View style={styles.tapHintContainer}>
-            <Text style={styles.tapHintText}>
-              {isExpanded ? 'Hide full route' : 'Tap to see full route'}
+            <Text style={[styles.tapHintText, { color: theme.labelColor }]}>
+              {index === expandedIndex ? 'Hide full route' : 'Tap to see full route'}
             </Text>
           </View>
         </View>
-        {isExpanded && (
-          <View style={styles.expandedContent}>
-            <Text style={styles.sectionTitle}>Full Route</Text>
+        {index === expandedIndex && (
+          <View style={[styles.expandedContent, { borderTopColor: theme.borderColor }]}>
+            <Text style={[styles.sectionTitle, { color: theme.headerTextColor }]}>Full Route</Text>
             <View style={styles.routeListContainer}>
               {item.path?.map((station, idx) => {
                 // Check if this station is an interchange station
                 const isInterchange = item?.interChangeStations?.includes(station);
+                
+                const dotColor = idx === 0 || idx === item?.path?.length - 1 
+                  ? theme.text 
+                  : (isInterchange ? '#FF9800' : item?.colorPath[idx]);
                 
                 return (
                   <View key={idx} style={styles.routeListItem}>
@@ -97,13 +103,14 @@ const RouteSelection = ({onClose}) => {
                       style={[
                         styles.stationDot,
                         isInterchange ? styles.interchangeDot : null,
-                        {backgroundColor: idx == 0 || idx == item?.path?.length - 1 ? "#000000" : (isInterchange ? "" : item?.colorPath[idx])}
+                        { backgroundColor: dotColor }
                       ]}
                     />
                     <View style={styles.stationLineContainer}>
                       <View style={styles.stationNameRow}>
                         <Text style={[
                           styles.stationName,
+                          { color: theme.text },
                           isInterchange && styles.interchangeStationName
                         ]}>
                           {stationsFromKeys[station]}
@@ -117,7 +124,10 @@ const RouteSelection = ({onClose}) => {
                       </View>
                       
                       {idx < item.path.length - 1 && (
-                        <View style={[styles.connectionLine, {backgroundColor: item?.colorPath[idx] ? item?.colorPath[idx] : "#000000"}]} />
+                        <View style={[
+                          styles.connectionLine,
+                          {backgroundColor: item?.colorPath[idx] || theme.text}
+                        ]} />
                       )}
                     </View>
                   </View>
@@ -131,12 +141,12 @@ const RouteSelection = ({onClose}) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Route Details</Text>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeButtonText}>×</Text>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.softBackground }]}>
+      <View style={[styles.container, { backgroundColor: theme.softBackground }]}>
+        <View style={[styles.header, { backgroundColor: theme.softBackground }]}>
+          <Text style={[styles.headerTitle, { color: theme.headerTextColor }]}>Route Details</Text>
+          <TouchableOpacity style={[styles.closeButton, { backgroundColor: theme.cardBackground }]} onPress={onClose}>
+            <Text style={[styles.closeButtonText, { color: theme.labelColor }]}>×</Text>
           </TouchableOpacity>
         </View>
         <FlatList
@@ -241,6 +251,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginTop: 6,
+    gap: 8,
   },
   directRouteText: {
     fontSize: 14,
@@ -263,9 +274,9 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#7B8794',
+    color: '#222B45',
     marginBottom: 16,
   },
   routeListContainer: {
@@ -387,16 +398,16 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     flex: 1,
-    backgroundColor: '#F3F6F9',
+    backgroundColor: '#2EC4B6',
     borderRadius: 22,
     paddingVertical: 13,
     alignItems: 'center',
     marginLeft: 6,
     borderWidth: 1,
-    borderColor: '#E0E4EA',
+    borderColor: '#2EC4B6',
   },
   secondaryButtonText: {
-    color: '#2EC4B6',
+    color: '#fff',
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.2,

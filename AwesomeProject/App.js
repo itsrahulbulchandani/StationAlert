@@ -11,6 +11,7 @@ import {
   Alert,
   PermissionsAndroid,
   Dimensions,
+  useColorScheme,
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import PushNotificationIOS from '@react-native-community/push-notification-ios';
@@ -24,6 +25,7 @@ import MapScreen from './components/MapScreen';
 import SearchRouteScreen from './components/SearchRoutes';
 import stations from './components/stations';
 import SplashScreen from './components/SplashScreen';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 
 export const TabContext = createContext();
 
@@ -48,18 +50,25 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.asin(Math.sqrt(a));
 }
 
-function App() {
+function AppContent({ 
+  activeTab, 
+  setActiveTab, 
+  selectedRoute, 
+  setSelectedRoute, 
+  routesFound, 
+  setRoutesFound, 
+  alertActive, 
+  setAlertActive,
+  onSetAlert 
+}) {
   const [currentCoordinates, setCurrentCoordinates] = useState(null);
   const [location, setLocation] = useState(null);
   const [error, setError] = useState(null);
-  const [selectedRoute, setSelectedRoute] = useState([]);
-  const [routesFound, setRoutesFound] = useState([]);
-  const [activeTab, setActiveTab] = useState('search route');
-  const [alertActive, setAlertActive] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
   const [adError, setAdError] = useState(false);
   const watchId = useRef(null);
   const appState = useRef(AppState.currentState);
+  const { theme } = useTheme();
 
   // Handle splash screen timeout
   useEffect(() => {
@@ -172,6 +181,98 @@ function App() {
     });
   };
 
+  const renderScreen = () => {
+    switch (activeTab) {
+      case 'alert':
+        return <AlertScreen />;
+      case 'search route':
+        return <SearchRouteScreen />;
+      case 'route':
+        return <RouteMapScreen />;
+      case 'map':
+        return <MapScreen />;
+      default:
+        return <RouteMapScreen />;
+    }
+  };
+
+  return (
+    <TabContext.Provider
+      value={{
+        activeTab,
+        setActiveTab,
+        selectedRoute,
+        setSelectedRoute,
+        routesFound,
+        setRoutesFound,
+        handleSetAlert: onSetAlert,
+        alertActive
+      }}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.softBackground }]}>
+        <StatusBar 
+          barStyle={theme.statusBar.style} 
+          backgroundColor={theme.statusBar.background} 
+        />
+        
+        {showSplash ? (
+          <SplashScreen onFinish={() => setShowSplash(false)} />
+        ) : (
+          <>
+            <View style={[styles.header, { backgroundColor: theme.softBackground }]}>
+              <Text style={[styles.headerTitle, { color: theme.headerTextColor }]}>
+                Next Stop
+              </Text>
+            </View>
+            
+            <View style={[styles.tabContainer, { backgroundColor: theme.softBackground }]}>
+              <TouchableOpacity
+                style={[
+                  styles.tabButton,
+                  activeTab === 'search route' && [styles.activeTabButton, { borderBottomColor: theme.tabBar.activeBorderColor }],
+                ]}
+                onPress={() => setActiveTab('search route')}>
+                <Text
+                  style={[
+                    styles.tabText,
+                    { color: activeTab === 'search route' ? theme.tabBar.activeColor : theme.tabBar.inactiveColor },
+                  ]}>
+                  Search Route
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.tabButton,
+                  activeTab === 'route' && [styles.activeTabButton, { borderBottomColor: theme.tabBar.activeBorderColor }],
+                ]}
+                onPress={() => setActiveTab('route')}>
+                <Text
+                  style={[
+                    styles.tabText,
+                    { color: activeTab === 'route' ? theme.tabBar.activeColor : theme.tabBar.inactiveColor },
+                  ]}>
+                  Map
+                </Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={[styles.content, { backgroundColor: theme.softBackground }]}>
+              {renderScreen()}
+            </View>
+            {!adError && activeTab !== 'search route' && <AdBanner />}
+          </>
+        )}
+      </SafeAreaView>
+    </TabContext.Provider>
+  );
+}
+
+function App() {
+  const [activeTab, setActiveTab] = useState('search route');
+  const [selectedRoute, setSelectedRoute] = useState([]);
+  const [routesFound, setRoutesFound] = useState([]);
+  const [alertActive, setAlertActive] = useState(false);
+
   const handleSetAlert = async (route) => {
     console.log('handleSetAlert called with route:', route);
     
@@ -179,13 +280,6 @@ function App() {
       console.log('Invalid route:', route);
       Alert.alert('Alert', 'Route is too short for alerts.');
       return;
-    }
-
-    // Clear any existing watch
-    if (watchId.current) {
-      console.log('Clearing existing watch:', watchId.current);
-      Geolocation.clearWatch(watchId.current);
-      watchId.current = null;
     }
 
     const hasLocationPermission = await requestLocationPermission();
@@ -215,247 +309,64 @@ function App() {
       console.log('Background location configuration complete');
     }
 
-    console.log('Setting up location tracking for route:', route.path);
     setAlertActive(true);
-    let currentIdx = 0;
-    let lastUpdateTime = Date.now();
-
-    // Start at the first station, alert for the next
-    const checkNextStation = (position) => {
-      const now = Date.now();
-      const timeSinceLastUpdate = now - lastUpdateTime;
-      lastUpdateTime = now;
-
-      // Log app state and location update details
-      const appState = AppState.currentState;
-      console.log('Location update received:', {
-        appState,
-        timeSinceLastUpdate,
-        position: {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-          timestamp: new Date(position.timestamp).toISOString()
-        }
-      });
-      
-      if (!route.path || currentIdx >= route.path.length - 1) {
-        console.log('Alert cleared - End of route');
-        if (watchId.current) {
-          Geolocation.clearWatch(watchId.current);
-          watchId.current = null;
-        }
-        setAlertActive(false);
-        return;
-      }
-
-      const nextStationName = route.path[currentIdx + 1];
-      const nextStation = stations[nextStationName];
-      
-      if (!nextStation) {
-        console.log('Next station not found:', nextStationName);
-        PushNotificationIOS.presentLocalNotification({
-          alertBody: `Next station not found:${nextStationName}`,
-          alertTitle: "Next Station Alert",
-          soundName: 'default',
-          category: 'STATION_ALERT',
-          userInfo: {
-            station: nextStationName,
-            timestamp: new Date().toISOString(),
-            appState: AppState.currentState
-          },
-          applicationIconBadgeNumber: 1,
-        });
-        return;
-      }
-
-      const {latitude: stationLat, longitude: stationLon} = nextStation.coords;
-      const {latitude: userLat, longitude: userLon} = position.coords;
-      const distance = getDistanceFromLatLonInMeters(userLat, userLon, stationLat, stationLon);
-
-      console.log('Location check:', {
-        appState,
-        userLocation: {lat: userLat, lon: userLon},
-        nextStation: {name: nextStationName, lat: stationLat, lon: stationLon},
-        distance: distance,
-        accuracy: position.coords.accuracy,
-        timeSinceLastUpdate
-      });
-
-      if (distance < 200) {
-        console.log('Station approaching alert triggered for:', nextStationName);
-        
-        if (Platform.OS === 'ios') {
-          try {
-            console.log('Attempting to send iOS notification...');
-            PushNotificationIOS.presentLocalNotification({
-              alertBody: `You are approaching ${nextStationName}!`,
-              alertTitle: "Next Station Alert",
-              soundName: 'default',
-              category: 'STATION_ALERT',
-              userInfo: {
-                station: nextStationName,
-                timestamp: new Date().toISOString(),
-                appState: AppState.currentState
-              },
-              applicationIconBadgeNumber: 1,
-            });
-            console.log('iOS notification sent successfully from state:', AppState.currentState);
-          } catch (error) {
-            console.error('Error sending iOS notification:', error);
-          }
-        } else {
-          Alert.alert('Next Station Alert', `You are approaching ${nextStationName}!`);
-        }
-        
-        currentIdx++;
-        if (currentIdx >= route.path.length - 1) {
-          console.log('Alert cleared - Reached final station');
-          if (watchId.current) {
-            Geolocation.clearWatch(watchId.current);
-            watchId.current = null;
-          }
-          setAlertActive(false);
-        }
-      }
-    };
-
-    // Start watching position with background updates
-    console.log('Starting location watch with background updates...');
-    watchId.current = Geolocation.watchPosition(
-      checkNextStation,
-      (error) => {
-        console.log('Location error:', error);
-        setAlertActive(false);
-      },
-      { enableHighAccuracy: true }
-    );
-    
-    console.log('Location watching started with ID:', watchId.current);
     Alert.alert('Alert Set', 'You will be notified as you approach the next station.');
   };
 
-  const renderScreen = () => {
-    switch (activeTab) {
-      case 'alert':
-        return <AlertScreen />;
-      case 'search route' :
-        return <SearchRouteScreen />
-      case 'route':
-        return <RouteMapScreen />;
-      case 'map':
-        return <MapScreen />;
-      default:
-        return <RouteMapScreen />;
-    }
-  };
-
   return (
-    <GestureHandlerRootView style={{flex: 1}}>
-      <TabContext.Provider
-        value={{
-          activeTab, 
-          setActiveTab, 
-          setSelectedRoute, 
-          selectedRoute, 
-          setRoutesFound, 
-          routesFound,
-          handleSetAlert,
-          alertActive
-        }}>
-        <StatusBar 
-          barStyle="dark-content" 
-          backgroundColor={softBg} 
-          translucent={false} 
-        />
-        
-        {showSplash ? (
-          <SplashScreen onFinish={() => setShowSplash(false)} />
-        ) : (
-          <SafeAreaView style={styles.safeArea}>
-            <View style={styles.header}>
-              <Text style={styles.headerTitle}>Next Stop</Text>
-            </View>
-            
-            <View style={styles.tabContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.tabButton,
-                  activeTab === 'search route' && styles.activeTabButton,
-                ]}
-                onPress={() => setActiveTab('search route')}>
-                <Text
-                  style={[
-                    styles.tabText,
-                    activeTab === 'search route' && styles.activeTabText,
-                  ]}>
-                  Search Route
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[
-                  styles.tabButton,
-                  activeTab === 'route map' && styles.activeTabButton,
-                ]}
-                onPress={() => setActiveTab('route map')}>
-                <Text
-                  style={[
-                    styles.tabText,
-                    activeTab === 'route map' && styles.activeTabText,
-                  ]}>
-                  Route Map
-                </Text>
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.content}>
-              {renderScreen()}
-            </View>
-            {!adError && activeTab !== 'search route' && <AdBanner />}
-          </SafeAreaView>
-        )}
-      </TabContext.Provider>
-    </GestureHandlerRootView>
+    <ThemeProvider>
+      <AppContent
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        selectedRoute={selectedRoute}
+        setSelectedRoute={setSelectedRoute}
+        routesFound={routesFound}
+        setRoutesFound={setRoutesFound}
+        alertActive={alertActive}
+        setAlertActive={setAlertActive}
+        onSetAlert={handleSetAlert}
+      />
+    </ThemeProvider>
   );
 }
-
-const accentColor = '#2EC4B6';
-const softBg = '#F3F6F9';
-const tabInactive = '#B0B4B8';
-const tabActive = accentColor;
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: softBg,
   },
   header: {
-    backgroundColor: softBg,
     paddingTop: normalize(24),
     paddingBottom: normalize(16),
     paddingHorizontal: normalize(24),
     alignItems: 'flex-start',
     borderBottomWidth: 0,
     elevation: 0,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   headerTitle: {
-    color: '#222B45',
-    fontSize: normalize(32),
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
+    fontSize: normalize(36),
+    fontWeight: '800',
+    letterSpacing: 1,
     textAlign: 'left',
     fontFamily: 'System',
+    textTransform: 'uppercase',
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   tabContainer: {
     flexDirection: 'row',
     height: normalize(48),
-    backgroundColor: softBg,
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: normalize(8),
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E4EA',
   },
   tabButton: {
     flex: 1,
@@ -467,23 +378,17 @@ const styles = StyleSheet.create({
     marginHorizontal: normalize(8),
   },
   activeTabButton: {
-    borderBottomColor: tabActive,
-    backgroundColor: 'transparent',
+    borderBottomWidth: 3,
   },
   tabText: {
     fontSize: normalize(16),
     fontWeight: '600',
-    color: tabInactive,
     textAlign: 'center',
     fontFamily: 'System',
     letterSpacing: 0.2,
   },
-  activeTabText: {
-    color: tabActive,
-  },
   content: {
     flex: 1,
-    backgroundColor: softBg,
     zIndex: -1,
     paddingTop: normalize(8),
   },
