@@ -13,27 +13,30 @@ import {
   Dimensions,
   useColorScheme,
 } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import PushNotificationIOS from '@react-native-community/push-notification-ios';
 import Geolocation from '@react-native-community/geolocation';
-import { AdBanner } from './src/components/AdBanner';
+import {AdBanner} from './src/components/AdBanner';
 import './src/config/admob';
 
 import AlertScreen from './components/AlertScreen';
 import RouteMapScreen from './components/RouteMapScreen';
 import MapScreen from './components/MapScreen';
 import SearchRouteScreen from './components/SearchRoutes';
-import stations from './components/stations';
+// import stations from './components/stations';
 import SplashScreen from './components/SplashScreen';
-import { ThemeProvider, useTheme } from './src/context/ThemeContext';
+import {ThemeProvider, useTheme} from './src/context/ThemeContext';
+import stations from './components/stationsWithIDs';
+import stationsInverted from './components/stations_inverted';
+import stationsFromKeys from './components/stationsFromKeys';
 
 export const TabContext = createContext();
 
 // Add screen dimension utilities
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 const scale = SCREEN_WIDTH / 375; // Using 375 as base width (iPhone X)
 
-const normalize = (size) => {
+const normalize = size => {
   const newSize = size * scale;
   return Math.round(Platform.OS === 'ios' ? newSize : newSize - 2);
 };
@@ -41,25 +44,58 @@ const normalize = (size) => {
 // Haversine formula to calculate distance between two points
 function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
   const R = 6371000; // Radius of the earth in meters
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
-    0.5 - Math.cos(dLat)/2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    (1 - Math.cos(dLon))/2;
+    0.5 -
+    Math.cos(dLat) / 2 +
+    (Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      (1 - Math.cos(dLon))) /
+      2;
   return R * 2 * Math.asin(Math.sqrt(a));
 }
 
-function AppContent({ 
-  activeTab, 
-  setActiveTab, 
-  selectedRoute, 
-  setSelectedRoute, 
-  routesFound, 
-  setRoutesFound, 
-  alertActive, 
+// Helper function to find the nearest upcoming station
+const findNearestUpcomingStation = (currentLocation, routePath) => {
+  if (!currentLocation || !routePath || routePath.length < 2) {
+    return -1;
+  }
+
+  let minDistance = Infinity;
+  let nearestStationIndex = -1;
+
+  for (let i = 0; i < routePath.length; i++) {
+    const stationName = routePath[i];
+    const station = stations[stationName];
+    
+    if (!station) continue;
+
+    const distance = getDistanceFromLatLonInMeters(
+      currentLocation.coords.latitude,
+      currentLocation.coords.longitude,
+      station.coords.latitude,
+      station.coords.longitude
+    );
+
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearestStationIndex = i;
+    }
+  }
+
+  return nearestStationIndex;
+};
+
+function AppContent({
+  activeTab,
+  setActiveTab,
+  selectedRoute,
+  setSelectedRoute,
+  routesFound,
+  setRoutesFound,
+  alertActive,
   setAlertActive,
-  onSetAlert 
 }) {
   const [currentCoordinates, setCurrentCoordinates] = useState(null);
   const [location, setLocation] = useState(null);
@@ -68,14 +104,14 @@ function AppContent({
   const [adError, setAdError] = useState(false);
   const watchId = useRef(null);
   const appState = useRef(AppState.currentState);
-  const { theme } = useTheme();
+  const {theme} = useTheme();
 
   // Handle splash screen timeout
-  useEffect(() => {
-    if (showSplash) {
-      // Splash screen will handle its own timeout via onFinish callback
-    }
-  }, [showSplash]);
+  // useEffect(() => {
+  //   if (showSplash) {
+  //     // Splash screen will handle its own timeout via onFinish callback
+  //   }
+  // }, [showSplash]);
 
   useEffect(() => {
     // iOS notification configuration
@@ -181,6 +217,198 @@ function AppContent({
     });
   };
 
+  const handleSetAlert = async (route) => {
+    console.log('handleSetAlert called with route:', route);
+    
+    if (!route || !route.path || route.path.length < 2) {
+      console.log('Invalid route:', route);
+      Alert.alert('Alert', 'Route is too short for alerts.');
+      return;
+    }
+
+    // Clear any existing watch
+    if (watchId.current) {
+      console.log('Clearing existing watch:', watchId.current);
+      Geolocation.clearWatch(watchId.current);
+      watchId.current = null;
+    }
+
+    const hasLocationPermission = await requestLocationPermission();
+    if (!hasLocationPermission) {
+      Alert.alert('Permission Required', 'Location permission is required for alerts.');
+      return;
+    }
+
+    if (Platform.OS === 'ios') {
+      const hasNotificationPermission = await checkNotificationPermissions();
+      if (!hasNotificationPermission) {
+        Alert.alert('Permission Required', 'Notification permission is required for alerts.');
+        return;
+      }
+    }
+
+    // Get current location first to determine starting point
+    Geolocation.getCurrentPosition(
+      async (position) => {
+        const nearestStationIndex = findNearestUpcomingStation(position, route.path);
+        
+        if (nearestStationIndex === -1) {
+          Alert.alert('Alert', 'Unable to determine your position relative to the route.');
+          return;
+        }
+
+        // If we're at or past the last station
+        if (nearestStationIndex >= route.path.length - 1) {
+          Alert.alert('Alert', 'You have already passed all stations on this route.');
+          return;
+        }
+
+        // Configure for background location updates
+        if (Platform.OS === 'ios') {
+          console.log('Configuring background location updates...');
+          Geolocation.setRNConfiguration({
+            skipPermissionRequests: false,
+            authorizationLevel: 'always',
+            locationProvider: 'auto',
+            enableBackgroundLocationUpdates: true,
+            pauseLocationUpdatesAutomatically: false,
+          });
+          console.log('Background location configuration complete');
+        }
+
+        console.log('Setting up location tracking for route:', route.path);
+        setAlertActive(true);
+        let currentIdx = nearestStationIndex;
+        let lastUpdateTime = Date.now();
+
+        // Start at the first station, alert for the next
+        const checkNextStation = (position) => {
+          const now = Date.now();
+          const timeSinceLastUpdate = now - lastUpdateTime;
+          lastUpdateTime = now;
+
+          // Log app state and location update details
+          const appState = AppState.currentState;
+          console.log('Location update received:', {
+            appState,
+            timeSinceLastUpdate,
+            position: {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy,
+              timestamp: new Date(position.timestamp).toISOString()
+            }
+          });
+          
+          if (!route.path || currentIdx >= route.path.length - 1) {
+            console.log('Alert cleared - End of route');
+            if (watchId.current) {
+              Geolocation.clearWatch(watchId.current);
+              watchId.current = null;
+            }
+            setAlertActive(false);
+            return;
+          }
+
+          const nextStationId = route.path[currentIdx + 1];
+          const nextStation = stations[nextStationId];
+          const nextStationName = stationsFromKeys[nextStationId]
+          
+          if (!nextStation) {
+            console.log('Next station not found:', nextStationName);
+            PushNotificationIOS.presentLocalNotification({
+              alertBody: `Next station not found:${nextStationName}`,
+              alertTitle: "Next Station Alert",
+              soundName: 'default',
+              category: 'STATION_ALERT',
+              userInfo: {
+                station: nextStationName,
+                timestamp: new Date().toISOString(),
+                appState: AppState.currentState
+              },
+              applicationIconBadgeNumber: 1,
+            });
+            return;
+          }
+
+          const {latitude: stationLat, longitude: stationLon} = nextStation.coords;
+          const {latitude: userLat, longitude: userLon} = position.coords;
+          const distance = getDistanceFromLatLonInMeters(userLat, userLon, stationLat, stationLon);
+
+          console.log('Location check:', {
+            appState,
+            userLocation: {lat: userLat, lon: userLon},
+            nextStation: {name: nextStationName, lat: stationLat, lon: stationLon},
+            distance: distance,
+            accuracy: position.coords.accuracy,
+            timeSinceLastUpdate
+          });
+
+          if (distance < 200) {
+            console.log('Station approaching alert triggered for:', nextStationName);
+            
+            if (Platform.OS === 'ios') {
+              try {
+                console.log('Attempting to send iOS notification...');
+                PushNotificationIOS.presentLocalNotification({
+                  alertBody: `You are approaching ${nextStationName}!`,
+                  alertTitle: "Next Station Alert",
+                  soundName: 'default',
+                  category: 'STATION_ALERT',
+                  userInfo: {
+                    station: nextStationName,
+                    timestamp: new Date().toISOString(),
+                    appState: AppState.currentState
+                  },
+                  applicationIconBadgeNumber: 1,
+                });
+                console.log('iOS notification sent successfully from state:', AppState.currentState);
+              } catch (error) {
+                console.error('Error sending iOS notification:', error);
+              }
+            } else {
+              Alert.alert('Next Station Alert', `You are approaching ${nextStationName}!`);
+            }
+            
+            currentIdx++;
+            if (currentIdx >= route.path.length - 1) {
+              console.log('Alert cleared - Reached final station');
+              if (watchId.current) {
+                Geolocation.clearWatch(watchId.current);
+                watchId.current = null;
+              }
+              setAlertActive(false);
+            }
+          }
+        };
+
+        // Start watching position with background updates
+        console.log('Starting location watch with background updates...');
+        watchId.current = Geolocation.watchPosition(
+          checkNextStation,
+          (error) => {
+            console.log('Location error:', error);
+            setAlertActive(false);
+          },
+          { 
+            enableHighAccuracy: true,
+            // distanceFilter: 0,  // Get all movements
+            interval: 10000,    // Update every 10 seconds
+            fastestInterval: 10000,  // Fastest rate at which app can handle updates
+            maximumAge: 10000,  // Accept locations that are up to 10 seconds old
+          }
+        );
+        
+        console.log('Location watching started with ID:', watchId.current);
+        Alert.alert('Alert Set', 'You will be notified as you approach the next station.');
+      },
+      (error) => {
+        console.log('Location error:', error);
+        setAlertActive(false);
+      }
+    );
+  };
+
   const renderScreen = () => {
     switch (activeTab) {
       case 'alert':
@@ -205,58 +433,82 @@ function AppContent({
         setSelectedRoute,
         routesFound,
         setRoutesFound,
-        handleSetAlert: onSetAlert,
-        alertActive
+        handleSetAlert,
+        alertActive,
       }}>
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.softBackground }]}>
-        <StatusBar 
-          barStyle={theme.statusBar.style} 
-          backgroundColor={theme.statusBar.background} 
+      <SafeAreaView
+        style={[styles.safeArea, {backgroundColor: theme.softBackground}]}>
+        <StatusBar
+          barStyle={theme.statusBar.style}
+          backgroundColor={theme.statusBar.background}
         />
-        
+
         {showSplash ? (
           <SplashScreen onFinish={() => setShowSplash(false)} />
         ) : (
           <>
-            <View style={[styles.header, { backgroundColor: theme.softBackground }]}>
-              <Text style={[styles.headerTitle, { color: theme.headerTextColor }]}>
+            <View
+              style={[styles.header, {backgroundColor: theme.softBackground}]}>
+              <Text
+                style={[styles.headerTitle, {color: theme.headerTextColor}]}>
                 Next Stop
               </Text>
             </View>
-            
-            <View style={[styles.tabContainer, { backgroundColor: theme.softBackground }]}>
+
+            <View
+              style={[
+                styles.tabContainer,
+                {backgroundColor: theme.softBackground},
+              ]}>
               <TouchableOpacity
                 style={[
                   styles.tabButton,
-                  activeTab === 'search route' && [styles.activeTabButton, { borderBottomColor: theme.tabBar.activeBorderColor }],
+                  activeTab === 'search route' && [
+                    styles.activeTabButton,
+                    {borderBottomColor: theme.tabBar.activeBorderColor},
+                  ],
                 ]}
                 onPress={() => setActiveTab('search route')}>
                 <Text
                   style={[
                     styles.tabText,
-                    { color: activeTab === 'search route' ? theme.tabBar.activeColor : theme.tabBar.inactiveColor },
+                    {
+                      color:
+                        activeTab === 'search route'
+                          ? theme.tabBar.activeColor
+                          : theme.tabBar.inactiveColor,
+                    },
                   ]}>
                   Search Route
                 </Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[
                   styles.tabButton,
-                  activeTab === 'route' && [styles.activeTabButton, { borderBottomColor: theme.tabBar.activeBorderColor }],
+                  activeTab === 'route' && [
+                    styles.activeTabButton,
+                    {borderBottomColor: theme.tabBar.activeBorderColor},
+                  ],
                 ]}
                 onPress={() => setActiveTab('route')}>
                 <Text
                   style={[
                     styles.tabText,
-                    { color: activeTab === 'route' ? theme.tabBar.activeColor : theme.tabBar.inactiveColor },
+                    {
+                      color:
+                        activeTab === 'route'
+                          ? theme.tabBar.activeColor
+                          : theme.tabBar.inactiveColor,
+                    },
                   ]}>
                   Map
                 </Text>
               </TouchableOpacity>
             </View>
-            
-            <View style={[styles.content, { backgroundColor: theme.softBackground }]}>
+
+            <View
+              style={[styles.content, {backgroundColor: theme.softBackground}]}>
               {renderScreen()}
             </View>
             {!adError && activeTab !== 'search route' && <AdBanner />}
@@ -273,45 +525,7 @@ function App() {
   const [routesFound, setRoutesFound] = useState([]);
   const [alertActive, setAlertActive] = useState(false);
 
-  const handleSetAlert = async (route) => {
-    console.log('handleSetAlert called with route:', route);
-    
-    if (!route || !route.path || route.path.length < 2) {
-      console.log('Invalid route:', route);
-      Alert.alert('Alert', 'Route is too short for alerts.');
-      return;
-    }
 
-    const hasLocationPermission = await requestLocationPermission();
-    if (!hasLocationPermission) {
-      Alert.alert('Permission Required', 'Location permission is required for alerts.');
-      return;
-    }
-
-    if (Platform.OS === 'ios') {
-      const hasNotificationPermission = await checkNotificationPermissions();
-      if (!hasNotificationPermission) {
-        Alert.alert('Permission Required', 'Notification permission is required for alerts.');
-        return;
-      }
-    }
-
-    // Configure for background location updates
-    if (Platform.OS === 'ios') {
-      console.log('Configuring background location updates...');
-      Geolocation.setRNConfiguration({
-        skipPermissionRequests: false,
-        authorizationLevel: 'always',
-        locationProvider: 'auto',
-        enableBackgroundLocationUpdates: true,
-        pauseLocationUpdatesAutomatically: false,
-      });
-      console.log('Background location configuration complete');
-    }
-
-    setAlertActive(true);
-    Alert.alert('Alert Set', 'You will be notified as you approach the next station.');
-  };
 
   return (
     <ThemeProvider>
@@ -324,7 +538,6 @@ function App() {
         setRoutesFound={setRoutesFound}
         alertActive={alertActive}
         setAlertActive={setAlertActive}
-        onSetAlert={handleSetAlert}
       />
     </ThemeProvider>
   );
@@ -357,7 +570,7 @@ const styles = StyleSheet.create({
     fontFamily: 'System',
     textTransform: 'uppercase',
     textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 1, height: 1 },
+    textShadowOffset: {width: 1, height: 1},
     textShadowRadius: 2,
   },
   tabContainer: {
@@ -394,4 +607,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default App; 
+export default App;

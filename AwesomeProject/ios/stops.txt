@@ -35,7 +35,7 @@ stop_id,stop_code,stop_name,stop_desc,stop_lat,stop_lon,station_color,color_code
 34,,Ashok Park Main,,28.671572,77.155159,Green,#008000,FALSE
 35,,Satguru Ram Singh Marg,,28.662188,77.157829,Green,#008000,FALSE
 36,,Samaypur Badli,,28.742872,77.146545,Yellow,#FFFF00,FALSE
-37,"",Rohini Sector 18-19,,28.740192,77.135574,Yellow,#FFFF00,FALSE
+37,,Rohini Sector 18-19,,28.740192,77.135574,Yellow,#FFFF00,FALSE
 38,,Haiderpur Badli Mor,,28.718657,77.149956,Yellow,#FFFF00,FALSE
 39,,Jahangirpuri,,28.72818,77.16124,Yellow,#FFFF00,FALSE
 40,,Adarsh Nagar,,28.696377,77.208809,Yellow,#FFFF00,FALSE
@@ -140,7 +140,7 @@ stop_id,stop_code,stop_name,stop_desc,stop_lat,stop_lon,station_color,color_code
 139,,Sarai,,28.47794,77.304932,Violet,#8A2BE2,FALSE
 140,,NHPC Chowk,,28.462435,77.305252,Violet,#8A2BE2,FALSE
 141,,Mewala Maharajpur,,28.4485,77.308098,Violet,#8A2BE2,FALSE
-142,"",Sector-28,,28.440586,77.305992,Violet,#8A2BE2,FALSE
+142,,Sector-28,,28.440586,77.305992,Violet,#8A2BE2,FALSE
 143,,Badkal Mor,,28.422707,77.310234,Violet,#8A2BE2,FALSE
 144,,Old Faridabad,,28.412172,77.311272,Violet,#8A2BE2,FALSE
 145,,Neelam Chowk Ajronda,,28.400707,77.309105,Violet,#8A2BE2,FALSE

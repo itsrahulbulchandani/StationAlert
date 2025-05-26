@@ -126,7 +126,7 @@ const RouteSelection = ({onClose}) => {
                       {idx < item.path.length - 1 && (
                         <View style={[
                           styles.connectionLine,
-                          {backgroundColor: item?.colorPath[idx] || theme.text}
+                          {backgroundColor: item?.colorPath[idx+1] || theme.text}
                         ]} />
                       )}
                     </View>

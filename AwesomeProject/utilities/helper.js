@@ -1,3 +1,5 @@
+import { colorLinesWithIds, interchangeStationsWithColors } from "../components/graph";
+
 export const buildGraph = (stations, shapes) => {
   const graph = {};
   // Add each station to the graph
@@ -178,6 +180,53 @@ export const findAllRoutes2  = (graph, start, end, stationLines, maxDepth = 50) 
   
   // Array to store all possible routes
   const allRoutes = [];
+
+  const createColorPath = (path) => {
+    let colorPath = [];
+    if(path.length == 3){
+      console.log("path", path)
+    }
+    for(let i = 0; i < path.length; i++) {
+      const currentStation = path[i];
+      const currentStationLine = stationLines[currentStation];
+      
+      // If current station is an interchange station
+      if (currentStationLine === 'interchange') {
+        const interchangeColors = interchangeStationsWithColors[currentStation];
+        
+        // Get previous color if exists
+        const prevColor = i > 0 ? colorPath[i-1] : null;
+        
+        // Look ahead for next non-interchange station's color
+        let nextColor = null;
+        let j = i + 1;
+        while (j < path.length && stationLines[path[j]] === 'interchange') {
+          j++;
+        }
+        if (j < path.length) {
+          nextColor = colorLinesWithIds[path[j]];
+        }
+        
+        // Priority 1: Use previous color if it's valid for this interchange
+        if (prevColor && interchangeColors.includes(prevColor)) {
+          colorPath.push(prevColor);
+        }
+        // Priority 2: Use next color if it's valid for this interchange
+        else if (nextColor && interchangeColors.includes(nextColor)) {
+          colorPath.push(nextColor);
+        }
+        // Priority 3: Use first available color from interchange colors
+        else if (interchangeColors.length > 0) {
+          colorPath.push(interchangeColors[0]);
+        }
+      } else {
+        // For regular stations, use their assigned color
+        colorPath.push(colorLinesWithIds[currentStation]);
+      }
+    }
+    
+    return colorPath;
+  }
   
   // Function to count interchanges in a path
   const countInterchanges = (path) => {
@@ -187,45 +236,23 @@ export const findAllRoutes2  = (graph, start, end, stationLines, maxDepth = 50) 
     let interChangeStations = [];
     let currentLine = null;
     let lineChangeColors = [];
-    let colorPath = [];
-    if(path.length == 13){
-      console.log("stationLine")
-    }
+    let colorPath = createColorPath(path);
+    
     for (let i = 0; i < path.length; i++) {
       const station = path[i];
       const stationLine = stationLines[station];
       
-      if(stationLine == null || (stationLine == "interchange")){
-        let nextStationIdx = i+1;
-        if (i === 0) {
-            currentLine = stationLines[path[i+1]]
-        }
-        while(stationLines[path[nextStationIdx]] == "interchange" && nextStationIdx < path.length-1){
-          nextStationIdx++;
-        }
-        if(nextStationIdx < path.length){
-          colorPath = [...colorPath, stationLines[path[nextStationIdx]]]
-        }
-        continue;
-      }
-
-      colorPath = [...colorPath, stationLine]
-
       if (i === 0) {
-        currentLine = stationLine;
+        currentLine = colorPath[0];
         continue;
       }
-
       
       // Check if the line changed
-      if (stationLine !== currentLine) {
+      if (colorPath[i] !== currentLine) {
         interchanges++;
-        if(path[i-1] == undefined){
-          console.log("path", path)
-        }
-        interChangeStations.push(path[i-1])
-        lineChangeColors.push(stationLine);
-        currentLine = stationLine;
+        interChangeStations.push(path[i-1]);
+        lineChangeColors.push(colorPath[i]);
+        currentLine = colorPath[i];
       }
     }
     
@@ -234,7 +261,7 @@ export const findAllRoutes2  = (graph, start, end, stationLines, maxDepth = 50) 
   
   // For DFS, we'll use a recursive function
   function dfs(currentStation, path, totalDistance, visited) {
-    // If we've reached the destination, add the path to our results≠
+    // If we've reached the destination, add the path to our results
     if (currentStation === end) {
       const {interchanges, interChangeStations, lineChangeColors, colorPath} = countInterchanges(path);
       allRoutes.push({
@@ -243,7 +270,7 @@ export const findAllRoutes2  = (graph, start, end, stationLines, maxDepth = 50) 
         interchanges: interchanges,
         interChangeStations: interChangeStations,
         colorPath: [...colorPath],
-        lineChangeColors:[...lineChangeColors]
+        lineChangeColors: [...lineChangeColors]
       });
       return;
     }
@@ -272,7 +299,6 @@ export const findAllRoutes2  = (graph, start, end, stationLines, maxDepth = 50) 
       
       // Create new path by appending this neighbor
       const newPath = [...path, neighbor];
-      // const newColorPath = [...colorPath, stationLines[neighbor]]
       
       // Continue DFS
       dfs(neighbor, newPath, newDistance, newVisited);
@@ -280,8 +306,7 @@ export const findAllRoutes2  = (graph, start, end, stationLines, maxDepth = 50) 
   }
   
   // Start DFS from the start station
-  dfs(start, [start], 0, new Set([start]), [stationLines[start]]);
-  
+  dfs(start, [start], 0, new Set([start]));
   
   // Sort routes by distance and then by number of interchanges
   allRoutes.sort((a, b) => {
@@ -292,9 +317,10 @@ export const findAllRoutes2  = (graph, start, end, stationLines, maxDepth = 50) 
     // If distances are equal, compare by number of interchanges
     return a.interchanges - b.interchanges;
   });
+  
   let sortedBasedOnInterchanges = allRoutes ? allRoutes.sort((a, b) => a.interchanges - b.interchanges) : [];
   
-  return sortedBasedOnInterchanges?.slice(0,1)
+  return sortedBasedOnInterchanges?.slice(0,1);
 }
 
 // Example usage:
