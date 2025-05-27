@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   Platform,
   PermissionsAndroid,
+  Alert,
 } from 'react-native';
 import RNFS from 'react-native-fs';
 import MapView, {Marker, Polyline} from 'react-native-maps';
@@ -157,17 +158,17 @@ const RouteMapScreen = () => {
     }
   }, [stationsLoaded, loading, markerData]);
   // Station ID ranges for each line
-  const routeRanges = {
-    red: {start: 1, end: 21},
-    blue: {start: 72, end: 121},
-    yellow: {start: 36, end: 71},
-    green: {start: 22, end: 35},
-    violet: {start: 122, end: 148},
-    pink: {start: 173, end: 218},
-    magenta: {start: 161, end: 172},
-    grey: {start: 239, end: 241},
-    orange: {start: 154, end: 157},
-  };
+  // const routeRanges = {
+  //   red: {start: 1, end: 21},
+  //   blue: {start: 72, end: 121},
+  //   yellow: {start: 36, end: 71},
+  //   green: {start: 22, end: 35},
+  //   violet: {start: 122, end: 148},
+  //   pink: {start: 173, end: 218},
+  //   magenta: {start: 161, end: 172},
+  //   grey: {start: 239, end: 241},
+  //   orange: {start: 154, end: 157},
+  // };
 
   const parseStopsFile = async () => {
     try {
@@ -334,23 +335,14 @@ const RouteMapScreen = () => {
   };
 
   const getCurrentLocation = () => {
-    if (hasRequestedLocation.current && currentLocation) {
-      // If we already have location, just animate to it
-      mapRef.current?.animateToRegion({
-        latitude: currentLocation.latitude,
-        longitude: currentLocation.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }, 1000);
-      return;
-    }
-
     console.log("Getting current location...");
     requestLocationPermission().then(hasPermission => {
       console.log("Location permission:", hasPermission);
       if (hasPermission) {
         hasRequestedLocation.current = true;
-        Geolocation.getCurrentPosition(
+        
+        // Watch for location updates instead of just getting once
+        const watchId = Geolocation.watchPosition(
           position => {
             const { latitude, longitude } = position.coords;
             console.log("Got location:", { latitude, longitude });
@@ -368,16 +360,47 @@ const RouteMapScreen = () => {
                 longitudeDelta: 0.01,
               }, 1000);
             });
+
+            // Clear the watch after successful location
+            Geolocation.clearWatch(watchId);
           },
           error => {
             console.log("Location error:", error);
             hasRequestedLocation.current = false;
+            
+            // Handle specific error cases
+            let errorMessage = "Unable to get your location. ";
+            switch(error.code) {
+              case error.PERMISSION_DENIED:
+                errorMessage += "Please enable location permissions in your device settings.";
+                break;
+              case error.POSITION_UNAVAILABLE:
+                errorMessage += "Location service is not available. Please check if your device's location is turned on.";
+                break;
+              case error.TIMEOUT:
+                errorMessage += "Location request timed out. Please try again.";
+                break;
+              default:
+                errorMessage += "Please try again later.";
+            }
+            
+            // You can add Alert.alert here to show error to user
+            Alert.alert("Location Error", errorMessage);
           },
           { 
-            enableHighAccuracy: true, 
-            timeout: 20000, 
-            maximumAge: 1000 
+            enableHighAccuracy: false, // Set to false for faster response
+            timeout: 10000, // Reduced timeout to 10 seconds
+            maximumAge: 5000, // Allow locations up to 5 seconds old
+            distanceFilter: 10 // Update if device moves by 10 meters
           }
+        );
+      } else {
+        Alert.alert(
+          "Permission Denied",
+          "Location permission is required to show your position on the map. Please enable it in settings.",
+          [
+            { text: "OK", onPress: () => console.log("OK Pressed") }
+          ]
         );
       }
     });
