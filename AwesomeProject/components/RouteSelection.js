@@ -22,7 +22,7 @@ const pastelColors = [
 ];
 
 const RouteSelection = ({onClose}) => {
-  const {selectedRoute, routesFound, setSelectedRoute, setActiveTab, handleSetAlert} = useContext(TabContext);
+  const {selectedRoute, routesFound, setSelectedRoute, setActiveTab, handleSetAlert, alertActive} = useContext(TabContext);
   const { theme } = useTheme();
   const [expandedIndex, setExpandedIndex] = useState(0);
 
@@ -74,8 +74,20 @@ const RouteSelection = ({onClose}) => {
               }}>
               <Text style={styles.primaryButtonText}>View On Map</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryButton} onPress={() => handleSetAlert(item)}>
-              <Text style={styles.secondaryButtonText}>Set Alerts</Text>
+            <TouchableOpacity 
+              style={[
+                styles.secondaryButton,
+                alertActive && styles.disabledButton
+              ]} 
+              onPress={() => !alertActive && handleSetAlert(item)}
+              disabled={alertActive}
+            >
+              <Text style={[
+                styles.secondaryButtonText,
+                alertActive && styles.disabledButtonText
+              ]}>
+                {alertActive ? 'Alerts Active' : 'Set Alerts'}
+              </Text>
             </TouchableOpacity>
           </View>
           
@@ -411,6 +423,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.2,
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
+    borderColor: '#ccc',
+    opacity: 0.7,
+  },
+  disabledButtonText: {
+    color: '#666',
   },
 });
 

@@ -29,6 +29,8 @@ import {ThemeProvider, useTheme} from './src/context/ThemeContext';
 import stations from './components/stationsWithIDs';
 import stationsInverted from './components/stations_inverted';
 import stationsFromKeys from './components/stationsFromKeys';
+import AlertOverlay from './components/AlertOverlay';
+import InAppNotification from './src/components/InAppNotification';
 
 export const TabContext = createContext();
 
@@ -102,6 +104,9 @@ function AppContent({
   const [error, setError] = useState(null);
   const [showSplash, setShowSplash] = useState(false);
   const [adError, setAdError] = useState(false);
+  const [activeRoute, setActiveRoute] = useState(null);
+  const [showInAppNotification, setShowInAppNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
   const watchId = useRef(null);
   const appState = useRef(AppState.currentState);
   const {theme} = useTheme();
@@ -113,6 +118,7 @@ function AppContent({
   //   }
   // }, [showSplash]);
 
+  console.log("alertActive", alertActive)
   useEffect(() => {
     // iOS notification configuration
     if (Platform.OS === 'ios') {
@@ -247,6 +253,9 @@ function AppContent({
       }
     }
 
+    // Set the active route when starting alerts
+    setActiveRoute(route);
+
     // Get current location first to determine starting point
     Geolocation.getCurrentPosition(
       async (position) => {
@@ -264,20 +273,19 @@ function AppContent({
         }
 
         // Configure for background location updates
-        if (Platform.OS === 'ios') {
-          console.log('Configuring background location updates...');
-          Geolocation.setRNConfiguration({
-            skipPermissionRequests: false,
-            authorizationLevel: 'always',
-            locationProvider: 'auto',
-            enableBackgroundLocationUpdates: true,
-            pauseLocationUpdatesAutomatically: false,
-          });
-          console.log('Background location configuration complete');
-        }
+        console.log('Configuring background location updates...');
+        Geolocation.setRNConfiguration({
+          skipPermissionRequests: false,
+          authorizationLevel: 'always',
+          locationProvider: 'auto',
+          enableBackgroundLocationUpdates: true,
+          pauseLocationUpdatesAutomatically: false,
+          showsBackgroundLocationIndicator: true,
+          allowsBackgroundLocationUpdates: true
+        });
+        console.log('Background location configuration complete');
 
         console.log('Setting up location tracking for route:', route.path);
-        setAlertActive(true);
         let currentIdx = nearestStationIndex;
         let lastUpdateTime = Date.now();
 
@@ -286,10 +294,14 @@ function AppContent({
           const now = Date.now();
           const timeSinceLastUpdate = now - lastUpdateTime;
           lastUpdateTime = now;
+          setAlertActive(true);
+          // Update currentCoordinates for use in RouteMapScreen
+          setCurrentCoordinates(position);
+          console.log("setting alertActive to true and updating coordinates");
 
           // Log app state and location update details
           const appState = AppState.currentState;
-          console.log('Location update received:', {
+          console.log('alertactive Location update received:', {
             appState,
             timeSinceLastUpdate,
             position: {
@@ -306,6 +318,7 @@ function AppContent({
               Geolocation.clearWatch(watchId.current);
               watchId.current = null;
             }
+            console.log("setting alertActive to false")
             setAlertActive(false);
             return;
           }
@@ -349,7 +362,13 @@ function AppContent({
             
             if (Platform.OS === 'ios') {
               try {
-                console.log('Attempting to send iOS notification...');
+                // Show in-app notification if app is in foreground
+                if (AppState.currentState === 'active') {
+                  setNotificationMessage(`You are approaching ${nextStationName}!`);
+                  setShowInAppNotification(true);
+                }
+                
+                // Still show push notification
                 PushNotificationIOS.presentLocalNotification({
                   alertBody: `You are approaching ${nextStationName}!`,
                   alertTitle: "Next Station Alert",
@@ -367,7 +386,13 @@ function AppContent({
                 console.error('Error sending iOS notification:', error);
               }
             } else {
-              Alert.alert('Next Station Alert', `You are approaching ${nextStationName}!`);
+              // For Android, show in-app notification if in foreground
+              if (AppState.currentState === 'active') {
+                setNotificationMessage(`You are approaching ${nextStationName}!`);
+                setShowInAppNotification(true);
+              } else {
+                Alert.alert('Next Station Alert', `You are approaching ${nextStationName}!`);
+              }
             }
             
             currentIdx++;
@@ -377,6 +402,7 @@ function AppContent({
                 Geolocation.clearWatch(watchId.current);
                 watchId.current = null;
               }
+              console.log("setting alertActive to false")
               setAlertActive(false);
             }
           }
@@ -388,14 +414,17 @@ function AppContent({
           checkNextStation,
           (error) => {
             console.log('Location error:', error);
+            console.log("setting alertActive to false")
             setAlertActive(false);
           },
           { 
             enableHighAccuracy: true,
-            // distanceFilter: 0,  // Get all movements
+            distanceFilter: 10,  // Get updates when device moves by 10 meters
             interval: 10000,    // Update every 10 seconds
-            fastestInterval: 10000,  // Fastest rate at which app can handle updates
+            fastestInterval: 5000,  // Fastest rate at which app can handle updates
             maximumAge: 10000,  // Accept locations that are up to 10 seconds old
+            useSignificantChanges: false, // Get regular updates, not just significant ones
+            allowsBackgroundLocationUpdates: true // Enable background location updates
           }
         );
         
@@ -404,9 +433,23 @@ function AppContent({
       },
       (error) => {
         console.log('Location error:', error);
+        console.log("setting alertActive to false")
         setAlertActive(false);
       }
     );
+  };
+
+  // Add handleStopAlerts function
+  const handleStopAlerts = () => {
+    if (watchId.current) {
+      console.log('Stopping alerts and clearing watch:', watchId.current);
+      Geolocation.clearWatch(watchId.current);
+      watchId.current = null;
+    }
+    setAlertActive(false);
+    setActiveRoute(null);
+    console.log("setting alertActive to false")
+    Alert.alert('Alerts Stopped', 'Station tracking alerts have been stopped.');
   };
 
   const renderScreen = () => {
@@ -435,6 +478,8 @@ function AppContent({
         setRoutesFound,
         handleSetAlert,
         alertActive,
+        currentCoordinates,
+        setCurrentCoordinates
       }}>
       <SafeAreaView
         style={[styles.safeArea, {backgroundColor: theme.softBackground}]}>
@@ -447,6 +492,12 @@ function AppContent({
           <SplashScreen onFinish={() => setShowSplash(false)} />
         ) : (
           <>
+            <InAppNotification
+              message={notificationMessage}
+              isVisible={showInAppNotification}
+              onHide={() => setShowInAppNotification(false)}
+            />
+            
             <View
               style={[styles.header, {backgroundColor: theme.softBackground}]}>
               <Text
@@ -454,6 +505,8 @@ function AppContent({
                 Next Stop
               </Text>
             </View>
+
+            <AlertOverlay isActive={alertActive} onStopAlerts={handleStopAlerts} route={activeRoute} />
 
             <View
               style={[

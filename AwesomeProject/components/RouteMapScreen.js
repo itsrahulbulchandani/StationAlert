@@ -42,8 +42,8 @@ const RouteMapScreen = () => {
   const [stationsLoaded, setStationsLoaded] = useState(false);
   const [showMarkers, setShowMarkers] = useState(false);
   const [markerData, setMarkerData] = useState([]);
-  const [currentZoom, setCurrentZoom] = useState(10); // Default zoom level
-  const { selectedRoute=[], setSelectedRoute } = useContext(TabContext);
+  const [currentZoom, setCurrentZoom] = useState(10);
+  const { selectedRoute=[], setSelectedRoute, alertActive, currentCoordinates } = useContext(TabContext);
   const [currentLocation, setCurrentLocation] = useState(null);
   const mapRef = useRef(null);
   const hasRequestedLocation = useRef(false);
@@ -91,8 +91,13 @@ const RouteMapScreen = () => {
   const parseShapesFile = async () => {
     try {
       // Read the shapes.txt file
-      const filePath = RNFS.MainBundlePath + '/shapes_with_colors.txt';
+      const filePath = Platform.select({
+        ios: `${RNFS.MainBundlePath}/shapes_with_colors.txt`,
+        android: 'asset:/shapes_with_colors.txt',
+      });
+      console.log('Attempting to read file from:', filePath);
       const fileContent = await RNFS.readFile(filePath, 'utf8');
+      console.log('File read successfully');
 
       // Parse the content
       const lines = fileContent.split('\n');
@@ -132,6 +137,8 @@ const RouteMapScreen = () => {
       setLoading(false);
     } catch (error) {
       console.error('Error reading shapes file:', error);
+      console.error('Error details:', error.message);
+      console.error('File path attempted:', filePath);
       setLoading(false);
     }
   };
@@ -157,18 +164,28 @@ const RouteMapScreen = () => {
       setShowMarkers(true);
     }
   }, [stationsLoaded, loading, markerData]);
+
+  // Effect to update currentLocation when currentCoordinates changes during alert tracking
+  useEffect(() => {
+    if (alertActive && currentCoordinates) {
+      const { latitude, longitude } = currentCoordinates.coords;
+      console.log("Updating map with alert tracking coordinates:", { latitude, longitude });
+      setCurrentLocation({ latitude, longitude });
+    }
+  }, [alertActive, currentCoordinates]);
+
   // Station ID ranges for each line
-  // const routeRanges = {
-  //   red: {start: 1, end: 21},
-  //   blue: {start: 72, end: 121},
-  //   yellow: {start: 36, end: 71},
-  //   green: {start: 22, end: 35},
-  //   violet: {start: 122, end: 148},
-  //   pink: {start: 173, end: 218},
-  //   magenta: {start: 161, end: 172},
-  //   grey: {start: 239, end: 241},
-  //   orange: {start: 154, end: 157},
-  // };
+  const routeRanges = {
+    red: {start: 1, end: 21},
+    blue: {start: 72, end: 121},
+    yellow: {start: 36, end: 71},
+    green: {start: 22, end: 35},
+    violet: {start: 122, end: 148},
+    pink: {start: 173, end: 218},
+    magenta: {start: 161, end: 172},
+    grey: {start: 239, end: 241},
+    orange: {start: 154, end: 157},
+  };
 
   const parseStopsFile = async () => {
     try {
@@ -334,24 +351,46 @@ const RouteMapScreen = () => {
     }
   };
 
+  const tabContextRef = useRef();
+
+  // Store the TabContext reference without causing re-renders
+  const contextValue = useContext(TabContext);
+  useEffect(() => {
+    tabContextRef.current = contextValue;
+  }, [contextValue]);
+
   const getCurrentLocation = () => {
+    // If alerts are active, use the coordinates from alert tracking
+    if (alertActive && tabContextRef.current?.currentCoordinates) {
+      const { latitude, longitude } = tabContextRef.current.currentCoordinates.coords;
+      console.log("Using coordinates from alert tracking:", { latitude, longitude });
+      
+      const newLocation = { latitude, longitude };
+      setCurrentLocation(newLocation);
+      
+      mapRef.current?.animateToRegion({
+        latitude,
+        longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }, 1000);
+      return;
+    }
+
+    // If alerts are not active or no tracking coordinates available, request new location
     console.log("Getting current location...");
     requestLocationPermission().then(hasPermission => {
       console.log("Location permission:", hasPermission);
       if (hasPermission) {
         hasRequestedLocation.current = true;
-        
-        // Watch for location updates instead of just getting once
-        const watchId = Geolocation.watchPosition(
+        Geolocation.getCurrentPosition(
           position => {
             const { latitude, longitude } = position.coords;
             console.log("Got location:", { latitude, longitude });
             const newLocation = { latitude, longitude };
             
-            // First set the location
             setCurrentLocation(newLocation);
             
-            // Then animate to it after a short delay to ensure state is updated
             requestAnimationFrame(() => {
               mapRef.current?.animateToRegion({
                 latitude: newLocation.latitude,
@@ -360,47 +399,16 @@ const RouteMapScreen = () => {
                 longitudeDelta: 0.01,
               }, 1000);
             });
-
-            // Clear the watch after successful location
-            Geolocation.clearWatch(watchId);
           },
           error => {
             console.log("Location error:", error);
             hasRequestedLocation.current = false;
-            
-            // Handle specific error cases
-            let errorMessage = "Unable to get your location. ";
-            switch(error.code) {
-              case error.PERMISSION_DENIED:
-                errorMessage += "Please enable location permissions in your device settings.";
-                break;
-              case error.POSITION_UNAVAILABLE:
-                errorMessage += "Location service is not available. Please check if your device's location is turned on.";
-                break;
-              case error.TIMEOUT:
-                errorMessage += "Location request timed out. Please try again.";
-                break;
-              default:
-                errorMessage += "Please try again later.";
-            }
-            
-            // You can add Alert.alert here to show error to user
-            Alert.alert("Location Error", errorMessage);
           },
           { 
-            enableHighAccuracy: false, // Set to false for faster response
-            timeout: 10000, // Reduced timeout to 10 seconds
-            maximumAge: 5000, // Allow locations up to 5 seconds old
-            distanceFilter: 10 // Update if device moves by 10 meters
+            enableHighAccuracy: true, 
+            timeout: 20000, 
+            maximumAge: 1000 
           }
-        );
-      } else {
-        Alert.alert(
-          "Permission Denied",
-          "Location permission is required to show your position on the map. Please enable it in settings.",
-          [
-            { text: "OK", onPress: () => console.log("OK Pressed") }
-          ]
         );
       }
     });
@@ -551,7 +559,7 @@ const RouteMapScreen = () => {
   }, [stationsLoaded, loading, memoizedStations]);
 
   // Memoize the TestMapScreen component to prevent unnecessary re-renders
-  const MemoizedTestMapScreen = useMemo(() => {
+  const MapComponent = useMemo(() => {
     return TestMapScreen();
   }, [shapes, memoizedStations, selectedRoute?.path?.length, isMaxZoom, currentLocation]);
 
@@ -570,9 +578,7 @@ const RouteMapScreen = () => {
   return (
     <>
       <View style={styles.headerSpace} />
-      {stationsLoaded && !loading && showMarkers && (
-        <TestMapScreen />
-      )}
+      {stationsLoaded && !loading && showMarkers && MapComponent}
       <TouchableOpacity 
         style={styles.locationButton}
         onPress={getCurrentLocation}
