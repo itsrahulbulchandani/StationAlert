@@ -65,5 +65,11 @@
 	</array>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>This identifier will be used to deliver personalized ads to you.</string>
+  <key>UIUserNotificationTypes</key>
+      <array>
+          <string>alert</string>
+          <string>badge</string>
+          <string>sound</string>
+      </array>
 </dict>
 </plist>

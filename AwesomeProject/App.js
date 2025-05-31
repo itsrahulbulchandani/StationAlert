@@ -89,6 +89,7 @@ const findNearestUpcomingStation = (currentLocation, routePath) => {
   return nearestStationIndex;
 };
 
+
 function AppContent({
   activeTab,
   setActiveTab,
@@ -119,6 +120,7 @@ function AppContent({
   // }, [showSplash]);
 
   console.log("alertActive", alertActive)
+
   useEffect(() => {
     // iOS notification configuration
     if (Platform.OS === 'ios') {
@@ -357,7 +359,7 @@ function AppContent({
             timeSinceLastUpdate
           });
 
-          if (distance < 200) {
+          if (distance < 400) {
             console.log('Station approaching alert triggered for:', nextStationName);
             
             if (Platform.OS === 'ios') {
@@ -377,12 +379,12 @@ function AppContent({
                   userInfo: {
                     station: nextStationName,
                     timestamp: new Date().toISOString(),
-                    appState: AppState.currentState
+                    appState: AppState.currentState,
+                    iconName: 'AppIcon60x60'  // This references your app icon
                   },
                   applicationIconBadgeNumber: 1,
                   threadIdentifier: 'station-alerts',
-                  alertAction: 'view',
-                  alertLaunchImage: 'NotificationIcon',
+                  alertAction: 'view'
                 });
                 console.log('iOS notification sent successfully from state:', AppState.currentState);
               } catch (error) {
