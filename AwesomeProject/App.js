@@ -380,6 +380,9 @@ function AppContent({
                     appState: AppState.currentState
                   },
                   applicationIconBadgeNumber: 1,
+                  threadIdentifier: 'station-alerts',
+                  alertAction: 'view',
+                  alertLaunchImage: 'NotificationIcon',
                 });
                 console.log('iOS notification sent successfully from state:', AppState.currentState);
               } catch (error) {
@@ -468,6 +471,7 @@ function AppContent({
   };
 
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <TabContext.Provider
       value={{
         activeTab,
@@ -569,6 +573,7 @@ function AppContent({
         )}
       </SafeAreaView>
     </TabContext.Provider>
+    </GestureHandlerRootView>
   );
 }
 

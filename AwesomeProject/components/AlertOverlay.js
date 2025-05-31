@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
@@ -6,45 +6,115 @@ import {
   StyleSheet,
   Dimensions,
   Platform,
+  Animated,
 } from 'react-native';
+import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { useTheme } from '../src/context/ThemeContext';
 import stationsFromKeys from './stationsFromKeys';
 
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
 const AlertOverlay = ({ isActive, onStopAlerts, route }) => {
   const { theme } = useTheme();
-
+  const translateY = useRef(new Animated.Value(0)).current;
+  const offsetY = useRef(0); // Track the current position offset
+  
   if (!isActive) return null;
 
-  const routeTitle = route && route.path && route.path.length >= 2 
-    ? `${stationsFromKeys[route.path[0]]} → ${stationsFromKeys[route.path[route.path.length - 1]]}` 
+  const routeTitle = route && route.path && route.path.length >= 2
+    ? `${stationsFromKeys[route.path[0]]} → ${stationsFromKeys[route.path[route.path.length - 1]]}`
     : '';
 
+  const onGestureEvent = Animated.event(
+    [{ nativeEvent: { translationY: translateY } }],
+    { useNativeDriver: true }
+  );
+
+  const onHandlerStateChange = (event) => {
+    const { state, translationY } = event.nativeEvent;
+    
+    if (state === State.BEGAN) {
+      // Set the starting position when gesture begins
+      translateY.setOffset(offsetY.current);
+      translateY.setValue(0);
+    }
+    
+    if (state === State.END || state === State.CANCELLED) {
+      // Calculate vertical boundaries - 15% from top and bottom
+      const topBoundary = screenHeight * 0.15;
+      const bottomBoundary = screenHeight * 0.85;
+      const overlayHeight = 80;
+      const initialTop = Platform.OS === 'ios' ? 100 : 80;
+      
+      // Calculate min and max Y positions relative to initial position
+      const minY = topBoundary - initialTop;
+      const maxY = bottomBoundary - overlayHeight - initialTop;
+      
+      // Get current position (offset + current translation)
+      const currentY = offsetY.current + translationY;
+      
+      // Clamp Y value within boundaries
+      const clampedY = Math.max(minY, Math.min(maxY, currentY));
+      
+      // Update the offset reference
+      offsetY.current = clampedY;
+      
+      // Flatten the offset and set new value
+      translateY.flattenOffset();
+      
+      // Animate to final position with spring effect
+      Animated.spring(translateY, {
+        toValue: clampedY,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 8,
+      }).start();
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      <View style={[styles.overlay, { backgroundColor: theme.cardBackground }]}>
-        <View style={styles.content}>
-          <View style={styles.statusContainer}>
-            <View style={styles.dot} />
-            <View style={styles.textContainer}>
-              <Text style={[styles.statusText, { color: theme.text }]}>
-                Station Alerts Active
-              </Text>
-              {routeTitle ? (
-                <Text style={[styles.routeText, { color: theme.labelColor }]}>
-                  {routeTitle}
+    <PanGestureHandler
+      onGestureEvent={onGestureEvent}
+      onHandlerStateChange={onHandlerStateChange}
+    >
+      <Animated.View
+        style={[
+          styles.container,
+          {
+            transform: [
+              { translateY: translateY }, // Only Y translation
+            ],
+          },
+        ]}
+      >
+        <View style={[styles.overlay, { backgroundColor: theme.cardBackground }]}>
+          {/* Drag handle indicator */}
+          <View style={styles.dragHandle} />
+          
+          <View style={styles.content}>
+            <View style={styles.statusContainer}>
+              <View style={styles.dot} />
+              <View style={styles.textContainer}>
+                <Text style={[styles.statusText, { color: theme.text }]}>
+                  Station Alerts Active
                 </Text>
-              ) : null}
+                {routeTitle ? (
+                  <Text style={[styles.routeText, { color: theme.labelColor }]}>
+                    {routeTitle}
+                  </Text>
+                ) : null}
+              </View>
             </View>
+            <TouchableOpacity
+              style={[styles.stopButton, { backgroundColor: '#CC0000' }]}
+              onPress={onStopAlerts}
+            >
+              <Text style={styles.stopButtonText}>Stop Alerts</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={[styles.stopButton, { backgroundColor: '#CC0000' }]}
-            onPress={onStopAlerts}
-          >
-            <Text style={styles.stopButtonText}>Stop Alerts</Text>
-          </TouchableOpacity>
         </View>
-      </View>
-    </View>
+      </Animated.View>
+    </PanGestureHandler>
   );
 };
 
@@ -58,7 +128,7 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   overlay: {
-    width: Dimensions.get('window').width - 32,
+    width: screenWidth - 32,
     borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: {
@@ -69,8 +139,18 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
+  dragHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 8,
+    marginBottom: 4,
+  },
   content: {
     padding: 16,
+    paddingTop: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -113,4 +193,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AlertOverlay; 
+export default AlertOverlay;

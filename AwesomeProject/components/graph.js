@@ -147,10 +147,14 @@ let graphWithIds = {
     100: 1243.21,
   },
   36: {
+    37: 1932.1,
+  },
+  37: {
+    36: 1932.1,
     38: 1932.1,
   },
   38: {
-    36: 1932.1,
+    37: 1932.1,
     39: 1765.43,
   },
   39: {
@@ -1105,6 +1109,7 @@ let colorLinesWithIds = {
 
   //Yellow Line
   36: '#F7D117', // Samaypur Badli
+  37: '#F7D117', // Samaypur Badli
   38: '#F7D117', // Haiderpur Badli Mor
   39: '#F7D117', // Jahangirpuri
   40: '#F7D117', // Adarsh Nagar

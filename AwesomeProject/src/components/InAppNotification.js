@@ -26,7 +26,7 @@ const InAppNotification = ({message, isVisible, onHide}) => {
       // Auto hide after 3 seconds
       const timer = setTimeout(() => {
         hideNotification();
-      }, 3000);
+      }, 5000);
 
       return () => clearTimeout(timer);
     }
@@ -34,8 +34,8 @@ const InAppNotification = ({message, isVisible, onHide}) => {
 
   const hideNotification = () => {
     Animated.timing(translateY, {
-      toValue: -100,
-      duration: 300,
+      toValue: -200,
+      duration: 500,
       useNativeDriver: true,
     }).start(() => {
       if (onHide) onHide();
@@ -66,7 +66,7 @@ const InAppNotification = ({message, isVisible, onHide}) => {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 0,
+    top: 80,
     left: 0,
     right: 0,
     backgroundColor: '#2196F3',

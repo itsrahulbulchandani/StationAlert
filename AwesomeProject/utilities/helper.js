@@ -183,7 +183,7 @@ export const findAllRoutes2  = (graph, start, end, stationLines, maxDepth = 50) 
 
   const createColorPath = (path) => {
     let colorPath = [];
-    if(path.length == 3){
+    if(path.length == 18){
       console.log("path", path)
     }
     for(let i = 0; i < path.length; i++) {
@@ -237,6 +237,10 @@ export const findAllRoutes2  = (graph, start, end, stationLines, maxDepth = 50) 
     let currentLine = null;
     let lineChangeColors = [];
     let colorPath = createColorPath(path);
+
+    if(path.length == 18){
+      console.log("path", path)
+    }
     
     for (let i = 0; i < path.length; i++) {
       const station = path[i];
