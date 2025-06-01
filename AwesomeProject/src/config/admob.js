@@ -17,4 +17,4 @@ try {
 // Use test IDs for development and real IDs for production
 export const bannerAdUnitId = __DEV__ 
   ? TestIds.BANNER
-  : 'ca-app-pub-xxxxxxxxxxxxxxxx/yyyyyyyyyy'; // Replace with your actual ad unit ID 
+  : 'ca-app-pub-1713281088911988~3311444024'; // Replace with your actual ad unit ID 
