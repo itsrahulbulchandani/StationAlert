@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
-import { BannerAd, BannerAdSize } from 'react-native-google-mobile-ads';
+import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 import { bannerAdUnitId } from '../config/admob';
 
 export const AdBanner = () => {
+  const [adError, setAdError] = useState(null);
+
   try {
     return (
       <View style={styles.container}>
@@ -11,17 +13,34 @@ export const AdBanner = () => {
           unitId={bannerAdUnitId}
           size={BannerAdSize.BANNER}
           requestOptions={{
-            requestNonPersonalizedAdsOnly: true,
+            requestNonPersonalizedAdsOnly: false,
+            keywords: ['transit', 'transportation', 'travel'],
+          }}
+          onAdLoaded={() => {
+            console.log('Banner ad loaded successfully');
+            setAdError(null);
           }}
           onAdFailedToLoad={(error) => {
-            console.warn('Banner ad failed to load:', error);
+            console.warn('Banner ad failed to load:', {
+              errorCode: error.code,
+              errorMessage: error.message,
+              unitId: bannerAdUnitId,
+              isDev: __DEV__
+            });
+            setAdError(error);
+          }}
+          onAdOpened={() => {
+            console.log('Banner ad opened');
+          }}
+          onAdClosed={() => {
+            console.log('Banner ad closed');
           }}
         />
       </View>
     );
   } catch (error) {
     console.warn('Error rendering banner ad:', error);
-    return null; // Return null if there's an error
+    return null;
   }
 };
 

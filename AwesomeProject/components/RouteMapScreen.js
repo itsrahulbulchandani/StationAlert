@@ -15,7 +15,7 @@ import {
   Alert,
 } from 'react-native';
 import RNFS from 'react-native-fs';
-import MapView, {Marker, Polyline} from 'react-native-maps';
+import MapView, {Marker, Polyline, Callout} from 'react-native-maps';
 import {
   findAllRoutes2,
   findRoutesWithTransfers,
@@ -262,14 +262,14 @@ const RouteMapScreen = () => {
           <Text style={{
             color: '#000',
             backgroundColor: 'rgba(255,255,255,0.85)',
-            fontSize: 10,
+            fontSize: 8,
             fontWeight: 'bold',
-            paddingHorizontal: 4,
-            paddingVertical: 2,
-            borderRadius: 3,
+            paddingHorizontal: 3,
+            paddingVertical: 1,
+            borderRadius: 2,
             textAlign: 'center',
-            marginBottom: 3,
-            maxWidth: 90,
+            marginBottom: 2,
+            maxWidth: 70,
             overflow: 'hidden',
           }}>
             {name}
@@ -359,6 +359,8 @@ const RouteMapScreen = () => {
     tabContextRef.current = contextValue;
   }, [contextValue]);
 
+  const [mapKey, setMapKey] = useState(0);
+
   const getCurrentLocation = () => {
     // If alerts are active, use the coordinates from alert tracking
     if (alertActive && tabContextRef.current?.currentCoordinates) {
@@ -368,12 +370,14 @@ const RouteMapScreen = () => {
       const newLocation = { latitude, longitude };
       setCurrentLocation(newLocation);
       
-      mapRef.current?.animateToRegion({
-        latitude,
-        longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }, 1000);
+      if (mapRef.current) {
+        mapRef.current.animateToRegion({
+          latitude,
+          longitude,
+          latitudeDelta: 0.02,
+          longitudeDelta: 0.02,
+        }, 1000);
+      }
       return;
     }
 
@@ -391,14 +395,14 @@ const RouteMapScreen = () => {
             
             setCurrentLocation(newLocation);
             
-            requestAnimationFrame(() => {
-              mapRef.current?.animateToRegion({
+            if (mapRef.current) {
+              mapRef.current.animateToRegion({
                 latitude: newLocation.latitude,
                 longitude: newLocation.longitude,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
+                latitudeDelta: 0.02,
+                longitudeDelta: 0.02,
               }, 1000);
-            });
+            }
           },
           error => {
             console.log("Location error:", error);
@@ -453,10 +457,13 @@ const RouteMapScreen = () => {
         <PinchGestureHandler>
           <PanGestureHandler>
             <MapView
+              key={mapKey}
               ref={mapRef}
               style={{flex: 1, margin: 10}}
               cameraZoomRange={CameraZoomRange}
               initialRegion={initialRegion}
+              preserveClusterData={true}
+              moveOnMarkerPress={false}
               onMapReady={() => {
                 console.log('Map is ready');
                 setMapReady(true);
@@ -516,12 +523,14 @@ const RouteMapScreen = () => {
                       <Marker
                         key={marker.id}
                         coordinate={marker.coords}
-                        title={marker.name}
-                        anchor={{x: 0.5, y: 0.5}}>
-                        <InterchangeMarker
-                          name={marker.name}
-                          color={marker.color_code}
-                        />
+                        anchor={{x: 0.5, y: 0.5}}
+                        tracksViewChanges={false}>
+                        <View pointerEvents="none">
+                          <InterchangeMarker
+                            name={marker.name}
+                            color={marker.color_code}
+                          />
+                        </View>
                       </Marker>
                     );
                   }
@@ -530,13 +539,23 @@ const RouteMapScreen = () => {
                     <Marker
                       key={marker.id}
                       coordinate={marker.coords}
-                      title={marker.name}
-                      pinColor={marker.color_code}>
-                      <CustomMarker
-                        color={marker.color_code}
-                        size={6}
-                        borderWidth={0.5}
-                      />
+                      tracksViewChanges={false}>
+                      <View pointerEvents="none">
+                        <CustomMarker
+                          color={marker.color_code}
+                          size={6}
+                          borderWidth={0.5}
+                        />
+                      </View>
+                      <Callout 
+                        tooltip
+                        alphaHitTest
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          return false;
+                        }}>
+                        <SmallCallout text={marker.name} />
+                      </Callout>
                     </Marker>
                   );
                 })
@@ -598,6 +617,31 @@ const RouteMapScreen = () => {
     </>
   );
 };
+
+const SmallCallout = ({ text }) => (
+  <View style={{
+    backgroundColor: 'white',
+    borderRadius: 3,
+    padding: 3,
+    width: 60,
+    borderWidth: 0.5,
+    borderColor: '#ccc',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+    elevation: 2,
+  }}>
+    <Text style={{
+      fontSize: 9,
+      color: '#000',
+      textAlign: 'center',
+      fontWeight: '500',
+    }}>
+      {text}
+    </Text>
+  </View>
+);
 
 const styles = StyleSheet.create({
   container: {

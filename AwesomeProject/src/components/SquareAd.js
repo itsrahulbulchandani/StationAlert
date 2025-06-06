@@ -1,20 +1,49 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, Platform, Dimensions } from 'react-native';
-import { BannerAd, BannerAdSize } from 'react-native-google-mobile-ads';
-import { bannerAdUnitId } from '../config/admob';
+import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
+import { squareAdUnitId } from '../config/admob';
 
 export const SquareAd = () => {
+  const [adError, setAdError] = useState(null);
+
+  // Debug logging
+  console.log('SquareAd - unitId:', squareAdUnitId);
+  console.log('SquareAd - isDev:', __DEV__);
+  console.log('SquareAd - TestIds.MEDIUM_RECTANGLE:', TestIds.MEDIUM_RECTANGLE);
+
   try {
+    if (!squareAdUnitId) {
+      console.warn('SquareAd - No valid unitId provided');
+      return null;
+    }
+
     return (
       <View style={styles.container}>
         <BannerAd
-          unitId={bannerAdUnitId}
+          unitId={squareAdUnitId}
           size={BannerAdSize.MEDIUM_RECTANGLE}
           requestOptions={{
-            requestNonPersonalizedAdsOnly: true,
+            requestNonPersonalizedAdsOnly: false,
+            keywords: ['transit', 'transportation', 'travel'],
+          }}
+          onAdLoaded={() => {
+            console.log('Square ad loaded successfully');
+            setAdError(null);
           }}
           onAdFailedToLoad={(error) => {
-            console.warn('Square ad failed to load:', error);
+            console.warn('Square ad failed to load:', {
+              errorCode: error.code,
+              errorMessage: error.message,
+              unitId: squareAdUnitId,
+              isDev: __DEV__
+            });
+            setAdError(error);
+          }}
+          onAdOpened={() => {
+            console.log('Square ad opened');
+          }}
+          onAdClosed={() => {
+            console.log('Square ad closed');
           }}
         />
       </View>

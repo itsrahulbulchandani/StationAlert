@@ -13,6 +13,15 @@ import {
   Dimensions,
   useColorScheme,
 } from 'react-native';
+import {
+  PERMISSIONS,
+  RESULTS,
+  check,
+  request,
+  openSettings,
+  checkMultiple,
+  requestMultiple,
+} from 'react-native-permissions';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import PushNotificationIOS from '@react-native-community/push-notification-ios';
 import Geolocation from '@react-native-community/geolocation';
@@ -89,6 +98,33 @@ const findNearestUpcomingStation = (currentLocation, routePath) => {
   return nearestStationIndex;
 };
 
+// Add this before the AppContent component
+const initializePermissions = async () => {
+  if (Platform.OS === 'ios') {
+    const permissions = [
+      PERMISSIONS.IOS.LOCATION_WHEN_IN_USE,
+      PERMISSIONS.IOS.LOCATION_ALWAYS,
+      PERMISSIONS.IOS.NOTIFICATIONS,
+    ];
+    
+    try {
+      const statuses = await checkMultiple(permissions);
+      console.log('Permission statuses:', statuses);
+      
+      // Request any permissions that aren't granted
+      const permissionsToRequest = permissions.filter(
+        permission => statuses[permission] === RESULTS.DENIED
+      );
+      
+      if (permissionsToRequest.length > 0) {
+        const results = await requestMultiple(permissionsToRequest);
+        console.log('Permission request results:', results);
+      }
+    } catch (error) {
+      console.error('Error initializing permissions:', error);
+    }
+  }
+};
 
 function AppContent({
   activeTab,
@@ -122,11 +158,15 @@ function AppContent({
   console.log("alertActive", alertActive)
 
   useEffect(() => {
+    // Initialize permissions first
+    initializePermissions();
+
     // iOS notification configuration
     if (Platform.OS === 'ios') {
       try {
         console.log('Initializing iOS notifications...');
-        // Configure notification categories for iOS
+        
+        // Configure notification categories
         PushNotificationIOS.setNotificationCategories([
           {
             id: 'STATION_ALERT',
@@ -142,9 +182,10 @@ function AppContent({
             ],
           },
         ]);
-        console.log('iOS notification categories configured successfully');
+        
+        console.log('Notification categories configured');
       } catch (error) {
-        console.error('Error configuring iOS notifications:', error);
+        console.error('Error in iOS notification initialization:', error);
       }
     }
     
@@ -178,271 +219,429 @@ function AppContent({
     };
   }, []);
 
-  const requestLocationPermission = async () => {
-    if (Platform.OS === 'ios') {
-      return true; // iOS permissions are handled in Info.plist
-    }
+// First, install the library:
+// npm install react-native-permissions
+// For iOS, also run: cd ios && pod install
 
-    try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        {
-          title: 'Location Permission',
-          message: 'Station Alert needs access to your location to provide alerts.',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        },
-      );
-      console.log('Location permission result:', granted);
-      return granted === PermissionsAndroid.RESULTS.GRANTED;
-    } catch (err) {
-      console.log('Location permission error:', err);
-      return false;
-    }
-  };
+// Add these imports at the top of your file:
 
-  const checkNotificationPermissions = async () => {
-    if (Platform.OS !== 'ios') return true;
+
+const getLocationPermission = () => {
+  if (Platform.OS === 'ios') {
+    return PERMISSIONS.IOS.LOCATION_WHEN_IN_USE;
+  } else {
+    return PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION;
+  }
+};
+
+const getBackgroundLocationPermission = () => {
+  if (Platform.OS === 'ios') {
+    return PERMISSIONS.IOS.LOCATION_ALWAYS;
+  } else {
+    return PERMISSIONS.ANDROID.ACCESS_BACKGROUND_LOCATION;
+  }
+};
+
+const getNotificationPermission = () => {
+  if (Platform.OS === 'ios') {
+    return PERMISSIONS.IOS.NOTIFICATIONS;
+  } else {
+    return PERMISSIONS.ANDROID.POST_NOTIFICATIONS;
+  }
+};
+
+const checkLocationPermissionStatus = async () => {
+  try {
+    // Check basic location permission first
+    const basicLocationStatus = await check(getLocationPermission());
     
-    return new Promise((resolve) => {
+    if (basicLocationStatus !== RESULTS.GRANTED) {
+      return {
+        status: basicLocationStatus,
+        hasBackground: false
+      };
+    }
+
+    // If basic location is granted, check background location
+    const backgroundLocationStatus = await check(getBackgroundLocationPermission());
+    
+    return {
+      status: basicLocationStatus,
+      hasBackground: backgroundLocationStatus === RESULTS.GRANTED
+    };
+  } catch (error) {
+    console.log('Error checking location permission:', error);
+    return {
+      status: RESULTS.UNAVAILABLE,
+      hasBackground: false
+    };
+  }
+};
+
+const checkNotificationPermissionStatus = async () => {
+  if (Platform.OS === 'ios') {
+    try {
+     return new Promise((resolve) => {
       PushNotificationIOS.checkPermissions((permissions) => {
-        console.log('Current notification permissions:', permissions);
-        
-        if (!permissions.alert && !permissions.badge && !permissions.sound) {
-          PushNotificationIOS.requestPermissions({
-            alert: true,
-            badge: true,
-            sound: true,
-          }, (granted) => {
-            console.log('Requested notification permissions:', granted);
-            resolve(granted.alert || granted.badge || granted.sound);
-          });
-        } else {
-          resolve(true);
-        }
+        console.log('iOS notification permissions:', permissions);
+        const hasAnyPermission = permissions.alert || permissions.badge || permissions.sound;
+        resolve(hasAnyPermission ? RESULTS.GRANTED : RESULTS.DENIED);
       });
     });
-  };
+    } catch (error) {
+      console.error('Detailed error checking notification permission:', error);
+      // Try fallback to PushNotificationIOS only
+    }
+  }
+};
 
-  const handleSetAlert = async (route) => {
-    console.log('handleSetAlert called with route:', route);
+const getPermissionStatusText = (status) => {
+  switch (status) {
+    case RESULTS.UNAVAILABLE:
+      return 'unavailable';
+    case RESULTS.DENIED:
+      return 'denied';
+    case RESULTS.LIMITED:
+      return 'limited';
+    case RESULTS.GRANTED:
+      return 'granted';
+    case RESULTS.BLOCKED:
+      return 'blocked';
+    default:
+      return 'unknown';
+  }
+};
+
+const showPermissionSettingsPrompt = (locationInfo, notificationStatus) => {
+  let message = '';
+  let needsLocationFix = false;
+  let needsNotificationFix = false;
+
+  // Check location issues
+  if (locationInfo.status === RESULTS.DENIED || locationInfo.status === RESULTS.BLOCKED) {
+    message += 'Location access is denied. ';
+    needsLocationFix = true;
+  } else if (locationInfo.status === RESULTS.GRANTED && !locationInfo.hasBackground) {
+    if (Platform.OS === 'ios') {
+      message += 'Location is set to "While Using App" but background alerts need "Always Allow". ';
+    } else {
+      message += 'Background location access is needed for alerts when app is closed. ';
+    }
+    needsLocationFix = true;
+  }
+
+  // Check notification issues
+  if (notificationStatus === RESULTS.DENIED || notificationStatus === RESULTS.BLOCKED) {
+    message += 'Notifications are disabled. ';
+    needsNotificationFix = true;
+  }
+
+  if (needsLocationFix || needsNotificationFix) {
+    message += '\nWould you like to open Settings to update these permissions?';
+
+    Alert.alert(
+      'Permission Settings Required',
+      message,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Open Settings',
+          onPress: () => {
+            openSettings().catch(() => {
+              console.warn('Cannot open settings');
+            });
+          }
+        }
+      ]
+    );
+    return true;
+  }
+  return false;
+};
+
+const requestLocationPermission = async () => {
+  try {
+    // First request basic location permission
+    const basicResult = await request(getLocationPermission());
+    console.log('Basic location permission result:', getPermissionStatusText(basicResult));
     
-    if (!route || !route.path || route.path.length < 2) {
-      console.log('Invalid route:', route);
-      Alert.alert('Alert', 'Route is too short for alerts.');
-      return;
+    if (basicResult !== RESULTS.GRANTED) {
+      return false;
     }
 
-    // Clear any existing watch
-    if (watchId.current) {
-      console.log('Clearing existing watch:', watchId.current);
-      Geolocation.clearWatch(watchId.current);
-      watchId.current = null;
-    }
+    // If basic location granted, request background location
+    const backgroundResult = await request(getBackgroundLocationPermission());
+    console.log('Background location permission result:', getPermissionStatusText(backgroundResult));
+    
+    // Return true if we have basic location (background is nice to have but not required)
+    return true;
+  } catch (error) {
+    console.log('Location permission request error:', error);
+    return false;
+  }
+};
 
+const requestNotificationPermission = async () => {
+      return new Promise((resolve) => {
+      PushNotificationIOS.requestPermissions({
+        alert: true,
+        badge: true,
+        sound: true,
+      }, (granted) => {
+        console.log('iOS notification permission result:', granted);
+        resolve(granted.alert || granted.badge || granted.sound);
+      });
+    });
+};
+
+const handleSetAlert = async (route) => {
+  console.log('handleSetAlert called with route:', route);
+  
+  if (!route || !route.path || route.path.length < 2) {
+    console.log('Invalid route:', route);
+    Alert.alert('Alert', 'Route is too short for alerts.');
+    return;
+  }
+
+  // Clear any existing watch
+  if (watchId.current) {
+    console.log('Clearing existing watch:', watchId.current);
+    Geolocation.clearWatch(watchId.current);
+    watchId.current = null;
+  }
+
+  // Check current permission status
+  const locationInfo = await checkLocationPermissionStatus();
+  const notificationStatus = await checkNotificationPermissionStatus();
+
+  console.log('Permission status:', {
+    location: getPermissionStatusText(locationInfo.status),
+    hasBackground: locationInfo.hasBackground,
+    notifications: getPermissionStatusText(notificationStatus)
+  });
+
+  // If permissions were previously granted but not optimal, show settings prompt
+  const hasPermissionIssues = (
+    locationInfo.status === RESULTS.BLOCKED || locationInfo.status === RESULTS.DENIED ||
+    notificationStatus === RESULTS.BLOCKED || notificationStatus === RESULTS.DENIED ||
+    (locationInfo.status === RESULTS.GRANTED && !locationInfo.hasBackground)
+  );
+
+  if (hasPermissionIssues) {
+    const promptShown = showPermissionSettingsPrompt(locationInfo, notificationStatus);
+    if (promptShown) {
+      return; // Exit early if we showed the settings prompt
+    }
+  }
+
+  // Request permissions if not granted
+  if (locationInfo.status !== RESULTS.GRANTED) {
     const hasLocationPermission = await requestLocationPermission();
     if (!hasLocationPermission) {
       Alert.alert('Permission Required', 'Location permission is required for alerts.');
       return;
     }
+  }
 
-    if (Platform.OS === 'ios') {
-      const hasNotificationPermission = await checkNotificationPermissions();
-      if (!hasNotificationPermission) {
-        Alert.alert('Permission Required', 'Notification permission is required for alerts.');
+  if (notificationStatus !== RESULTS.GRANTED && Platform.OS === 'ios') {
+    const hasNotificationPermission = await requestNotificationPermission();
+    if (!hasNotificationPermission) {
+      Alert.alert('Permission Required', 'Notification permission is required for alerts.');
+      return;
+    }
+  }
+
+  // Set the active route when starting alerts
+  setActiveRoute(route);
+
+  // Get current location first to determine starting point
+  Geolocation.getCurrentPosition(
+    async (position) => {
+      const nearestStationIndex = findNearestUpcomingStation(position, route.path);
+      
+      if (nearestStationIndex === -1) {
+        Alert.alert('Alert', 'Unable to determine your position relative to the route.');
         return;
       }
-    }
 
-    // Set the active route when starting alerts
-    setActiveRoute(route);
+      // If we're at or past the last station
+      if (nearestStationIndex >= route.path.length - 1) {
+        Alert.alert('Alert', 'You have already passed all stations on this route.');
+        return;
+      }
 
-    // Get current location first to determine starting point
-    Geolocation.getCurrentPosition(
-      async (position) => {
-        const nearestStationIndex = findNearestUpcomingStation(position, route.path);
-        
-        if (nearestStationIndex === -1) {
-          Alert.alert('Alert', 'Unable to determine your position relative to the route.');
-          return;
-        }
+      // Configure for background location updates
+      console.log('Configuring background location updates...');
+      Geolocation.setRNConfiguration({
+        skipPermissionRequests: false,
+        authorizationLevel: 'always',
+        locationProvider: 'auto',
+        enableBackgroundLocationUpdates: true,
+        pauseLocationUpdatesAutomatically: false,
+        showsBackgroundLocationIndicator: true,
+        allowsBackgroundLocationUpdates: true
+      });
+      console.log('Background location configuration complete');
 
-        // If we're at or past the last station
-        if (nearestStationIndex >= route.path.length - 1) {
-          Alert.alert('Alert', 'You have already passed all stations on this route.');
-          return;
-        }
+      console.log('Setting up location tracking for route:', route.path);
+      let currentIdx = nearestStationIndex;
+      let lastUpdateTime = Date.now();
 
-        // Configure for background location updates
-        console.log('Configuring background location updates...');
-        Geolocation.setRNConfiguration({
-          skipPermissionRequests: false,
-          authorizationLevel: 'always',
-          locationProvider: 'auto',
-          enableBackgroundLocationUpdates: true,
-          pauseLocationUpdatesAutomatically: false,
-          showsBackgroundLocationIndicator: true,
-          allowsBackgroundLocationUpdates: true
+      // Start at the first station, alert for the next
+      const checkNextStation = (position) => {
+        const now = Date.now();
+        const timeSinceLastUpdate = now - lastUpdateTime;
+        lastUpdateTime = now;
+        setAlertActive(true);
+        // Update currentCoordinates for use in RouteMapScreen
+        setCurrentCoordinates(position);
+        console.log("setting alertActive to true and updating coordinates");
+
+        // Log app state and location update details
+        const appState = AppState.currentState;
+        console.log('alertactive Location update received:', {
+          appState,
+          timeSinceLastUpdate,
+          position: {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            timestamp: new Date(position.timestamp).toISOString()
+          }
         });
-        console.log('Background location configuration complete');
+        
+        if (!route.path || currentIdx >= route.path.length - 1) {
+          console.log('Alert cleared - End of route');
+          if (watchId.current) {
+            Geolocation.clearWatch(watchId.current);
+            watchId.current = null;
+          }
+          console.log("setting alertActive to false")
+          setAlertActive(false);
+          return;
+        }
 
-        console.log('Setting up location tracking for route:', route.path);
-        let currentIdx = nearestStationIndex;
-        let lastUpdateTime = Date.now();
-
-        // Start at the first station, alert for the next
-        const checkNextStation = (position) => {
-          const now = Date.now();
-          const timeSinceLastUpdate = now - lastUpdateTime;
-          lastUpdateTime = now;
-          setAlertActive(true);
-          // Update currentCoordinates for use in RouteMapScreen
-          setCurrentCoordinates(position);
-          console.log("setting alertActive to true and updating coordinates");
-
-          // Log app state and location update details
-          const appState = AppState.currentState;
-          console.log('alertactive Location update received:', {
-            appState,
-            timeSinceLastUpdate,
-            position: {
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-              accuracy: position.coords.accuracy,
-              timestamp: new Date(position.timestamp).toISOString()
-            }
+        const nextStationId = route.path[currentIdx + 1];
+        const nextStation = stations[nextStationId];
+        const nextStationName = stationsFromKeys[nextStationId]
+        
+        if (!nextStation) {
+          console.log('Next station not found:', nextStationName);
+          PushNotificationIOS.presentLocalNotification({
+            alertBody: `Next station not found:${nextStationName}`,
+            alertTitle: "Next Station Alert",
+            soundName: 'default',
+            category: 'STATION_ALERT',
+            userInfo: {
+              station: nextStationName,
+              timestamp: new Date().toISOString(),
+              appState: AppState.currentState
+            },
+            applicationIconBadgeNumber: 1,
           });
+          return;
+        }
+
+        const {latitude: stationLat, longitude: stationLon} = nextStation.coords;
+        const {latitude: userLat, longitude: userLon} = position.coords;
+        const distance = getDistanceFromLatLonInMeters(userLat, userLon, stationLat, stationLon);
+
+        console.log('Location check:', {
+          appState,
+          userLocation: {lat: userLat, lon: userLon},
+          nextStation: {name: nextStationName, lat: stationLat, lon: stationLon},
+          distance: distance,
+          accuracy: position.coords.accuracy,
+          timeSinceLastUpdate
+        });
+
+        if (distance < 400) {
+          console.log('Station approaching alert triggered for:', nextStationName);
           
-          if (!route.path || currentIdx >= route.path.length - 1) {
-            console.log('Alert cleared - End of route');
+          if (Platform.OS === 'ios') {
+            try {
+              // Show in-app notification if app is in foreground
+              if (AppState.currentState === 'active') {
+                setNotificationMessage(`You are approaching ${nextStationName}!`);
+                setShowInAppNotification(true);
+              }
+              
+              // Still show push notification
+              PushNotificationIOS.presentLocalNotification({
+                alertBody: `You are approaching ${nextStationName}!`,
+                alertTitle: "Next Station Alert",
+                soundName: 'default',
+                category: 'STATION_ALERT',
+                userInfo: {
+                  station: nextStationName,
+                  timestamp: new Date().toISOString(),
+                  appState: AppState.currentState,
+                  iconName: 'AppIcon60x60'  // This references your app icon
+                },
+                applicationIconBadgeNumber: 1,
+                threadIdentifier: 'station-alerts',
+                alertAction: 'view'
+              });
+              console.log('iOS notification sent successfully from state:', AppState.currentState);
+            } catch (error) {
+              console.error('Error sending iOS notification:', error);
+            }
+          } else {
+            // For Android, show in-app notification if in foreground
+            if (AppState.currentState === 'active') {
+              setNotificationMessage(`You are approaching ${nextStationName}!`);
+              setShowInAppNotification(true);
+            } else {
+              Alert.alert('Next Station Alert', `You are approaching ${nextStationName}!`);
+            }
+          }
+          
+          currentIdx++;
+          if (currentIdx >= route.path.length - 1) {
+            console.log('Alert cleared - Reached final station');
             if (watchId.current) {
               Geolocation.clearWatch(watchId.current);
               watchId.current = null;
             }
             console.log("setting alertActive to false")
             setAlertActive(false);
-            return;
           }
+        }
+      };
 
-          const nextStationId = route.path[currentIdx + 1];
-          const nextStation = stations[nextStationId];
-          const nextStationName = stationsFromKeys[nextStationId]
-          
-          if (!nextStation) {
-            console.log('Next station not found:', nextStationName);
-            PushNotificationIOS.presentLocalNotification({
-              alertBody: `Next station not found:${nextStationName}`,
-              alertTitle: "Next Station Alert",
-              soundName: 'default',
-              category: 'STATION_ALERT',
-              userInfo: {
-                station: nextStationName,
-                timestamp: new Date().toISOString(),
-                appState: AppState.currentState
-              },
-              applicationIconBadgeNumber: 1,
-            });
-            return;
-          }
-
-          const {latitude: stationLat, longitude: stationLon} = nextStation.coords;
-          const {latitude: userLat, longitude: userLon} = position.coords;
-          const distance = getDistanceFromLatLonInMeters(userLat, userLon, stationLat, stationLon);
-
-          console.log('Location check:', {
-            appState,
-            userLocation: {lat: userLat, lon: userLon},
-            nextStation: {name: nextStationName, lat: stationLat, lon: stationLon},
-            distance: distance,
-            accuracy: position.coords.accuracy,
-            timeSinceLastUpdate
-          });
-
-          if (distance < 400) {
-            console.log('Station approaching alert triggered for:', nextStationName);
-            
-            if (Platform.OS === 'ios') {
-              try {
-                // Show in-app notification if app is in foreground
-                if (AppState.currentState === 'active') {
-                  setNotificationMessage(`You are approaching ${nextStationName}!`);
-                  setShowInAppNotification(true);
-                }
-                
-                // Still show push notification
-                PushNotificationIOS.presentLocalNotification({
-                  alertBody: `You are approaching ${nextStationName}!`,
-                  alertTitle: "Next Station Alert",
-                  soundName: 'default',
-                  category: 'STATION_ALERT',
-                  userInfo: {
-                    station: nextStationName,
-                    timestamp: new Date().toISOString(),
-                    appState: AppState.currentState,
-                    iconName: 'AppIcon60x60'  // This references your app icon
-                  },
-                  applicationIconBadgeNumber: 1,
-                  threadIdentifier: 'station-alerts',
-                  alertAction: 'view'
-                });
-                console.log('iOS notification sent successfully from state:', AppState.currentState);
-              } catch (error) {
-                console.error('Error sending iOS notification:', error);
-              }
-            } else {
-              // For Android, show in-app notification if in foreground
-              if (AppState.currentState === 'active') {
-                setNotificationMessage(`You are approaching ${nextStationName}!`);
-                setShowInAppNotification(true);
-              } else {
-                Alert.alert('Next Station Alert', `You are approaching ${nextStationName}!`);
-              }
-            }
-            
-            currentIdx++;
-            if (currentIdx >= route.path.length - 1) {
-              console.log('Alert cleared - Reached final station');
-              if (watchId.current) {
-                Geolocation.clearWatch(watchId.current);
-                watchId.current = null;
-              }
-              console.log("setting alertActive to false")
-              setAlertActive(false);
-            }
-          }
-        };
-
-        // Start watching position with background updates
-        console.log('Starting location watch with background updates...');
-        watchId.current = Geolocation.watchPosition(
-          checkNextStation,
-          (error) => {
-            console.log('Location error:', error);
-            console.log("setting alertActive to false")
-            setAlertActive(false);
-          },
-          { 
-            enableHighAccuracy: true,
-            distanceFilter: 10,  // Get updates when device moves by 10 meters
-            interval: 10000,    // Update every 10 seconds
-            fastestInterval: 5000,  // Fastest rate at which app can handle updates
-            maximumAge: 10000,  // Accept locations that are up to 10 seconds old
-            useSignificantChanges: false, // Get regular updates, not just significant ones
-            allowsBackgroundLocationUpdates: true // Enable background location updates
-          }
-        );
-        
-        console.log('Location watching started with ID:', watchId.current);
-        Alert.alert('Alert Set', 'You will be notified as you approach the next station.');
-      },
-      (error) => {
-        console.log('Location error:', error);
-        console.log("setting alertActive to false")
-        setAlertActive(false);
-      }
-    );
-  };
+      // Start watching position with background updates
+      console.log('Starting location watch with background updates...');
+      watchId.current = Geolocation.watchPosition(
+        checkNextStation,
+        (error) => {
+          console.log('Location error:', error);
+          console.log("setting alertActive to false")
+          setAlertActive(false);
+        },
+        { 
+          enableHighAccuracy: true,
+          distanceFilter: 10,  // Get updates when device moves by 10 meters
+          interval: 10000,    // Update every 10 seconds
+          fastestInterval: 5000,  // Fastest rate at which app can handle updates
+          maximumAge: 10000,  // Accept locations that are up to 10 seconds old
+          useSignificantChanges: false, // Get regular updates, not just significant ones
+          allowsBackgroundLocationUpdates: true // Enable background location updates
+        }  
+      );
+      
+      console.log('Location watching started with ID:', watchId.current);
+      Alert.alert('Alert Set', 'You will be notified as you approach the next station.');
+    },
+    (error) => {
+      console.log('Location error:', error);
+      console.log("setting alertActive to false")
+      setAlertActive(false);
+    }
+  );
+};
 
   // Add handleStopAlerts function
   const handleStopAlerts = () => {
