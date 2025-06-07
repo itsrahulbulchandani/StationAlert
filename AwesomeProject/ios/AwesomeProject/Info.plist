@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+	<key>NSHumanReadableCopyright</key>
+    <string>© 2025 Rahul Bulchandani. All rights reserved.</string>
 	<key>CFBundleDisplayName</key>
 	<string>Next Stop</string>
 	<key>CFBundleExecutable</key>
@@ -244,6 +246,11 @@
     <string>3qcr597p9d.skadnetwork</string>
   </dict>
 </array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.nextstop.locationupdate</string>
+		<string>com.nextstop.refresh</string>
+	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
