@@ -25,6 +25,7 @@ import {
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import PushNotificationIOS from '@react-native-community/push-notification-ios';
 import Geolocation from '@react-native-community/geolocation';
+import {requestTrackingPermission} from 'react-native-tracking-transparency';
 import {AdBanner} from './src/components/AdBanner';
 import './src/config/admob';
 
@@ -126,6 +127,20 @@ const initializePermissions = async () => {
   }
 };
 
+const requestAppTrackingPermission = async () => {
+  if (Platform.OS === 'ios') {
+    try {
+      const trackingStatus = await requestTrackingPermission();
+      console.log('Tracking permission status:', trackingStatus);
+      return trackingStatus === 'authorized';
+    } catch (error) {
+      console.error('Error requesting tracking permission:', error);
+      return false;
+    }
+  }
+  return true; // Return true for non-iOS platforms
+};
+
 function AppContent({
   activeTab,
   setActiveTab,
@@ -158,8 +173,15 @@ function AppContent({
   console.log("alertActive", alertActive)
 
   useEffect(() => {
-    // Initialize permissions first
-    initializePermissions();
+    const initializeApp = async () => {
+      // Request App Tracking Transparency permission first
+      await requestAppTrackingPermission();
+      
+      // Initialize other permissions
+      await initializePermissions();
+    };
+
+    initializeApp();
 
     // iOS notification configuration
     if (Platform.OS === 'ios') {
