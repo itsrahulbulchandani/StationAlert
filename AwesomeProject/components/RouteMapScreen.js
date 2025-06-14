@@ -43,7 +43,7 @@ const RouteMapScreen = () => {
   const [showMarkers, setShowMarkers] = useState(false);
   const [markerData, setMarkerData] = useState([]);
   const [currentZoom, setCurrentZoom] = useState(10);
-  const { selectedRoute=[], setSelectedRoute, alertActive, currentCoordinates } = useContext(TabContext);
+  const { selectedRoute=[], setSelectedRoute, alertActive, currentCoordinates, setActiveTab, setRoutesFound, setRouteSelectionOpened } = useContext(TabContext);
   const [currentLocation, setCurrentLocation] = useState(null);
   const mapRef = useRef(null);
   const hasRequestedLocation = useRef(false);
@@ -585,6 +585,8 @@ const RouteMapScreen = () => {
   const handleClearRoute = () => {
     if (setSelectedRoute) {
       setSelectedRoute([]); // Clear the selected route
+      setRoutesFound([]); // Clear the routes found
+      setRouteSelectionOpened(false); // Ensure route selection modal is closed
       hasAnimatedToRoute.current = false; // Reset the animation flag
       // Force rerender by updating showMarkers
       setShowMarkers(false);
@@ -592,6 +594,15 @@ const RouteMapScreen = () => {
         setShowMarkers(true);
       }, 50);
     }
+  };
+
+  const handleBackToRoutes = () => {
+    // Keep the current route in routesFound so it's still visible in the route selection screen
+    if (selectedRoute) {
+      setRoutesFound([selectedRoute]);
+      setRouteSelectionOpened(true); // Open the route selection modal
+    }
+    setActiveTab('search route'); // Switch back to search tab which shows route selection
   };
 
   return (
@@ -606,13 +617,22 @@ const RouteMapScreen = () => {
         <Text style={styles.locationButtonText}>📍</Text>
       </TouchableOpacity>
       {selectedRoute?.path && selectedRoute?.path?.length > 0 && (
-        <TouchableOpacity 
-          style={styles.clearButton}
-          onPress={handleClearRoute}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.clearButtonText}>Clear Route</Text>
-        </TouchableOpacity>
+        <>
+          <TouchableOpacity 
+            style={styles.clearButton}
+            onPress={handleClearRoute}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.clearButtonText}>Clear Route</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={handleBackToRoutes}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.backButtonText}>Back to Routes</Text>
+          </TouchableOpacity>
+        </>
       )}
     </>
   );
@@ -675,6 +695,25 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   clearButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  backButton: {
+    position: 'absolute',
+    bottom: 30,
+    right: 160, // Position it to the left of the Clear Route button
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 25,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
+  backButtonText: {
     color: 'white',
     fontWeight: 'bold',
     fontSize: 14,

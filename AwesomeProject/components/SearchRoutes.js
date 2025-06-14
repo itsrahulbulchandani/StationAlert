@@ -30,7 +30,7 @@ const SearchRoutesScreen = () => {
   const [allStations] = useState(metroStation);
   const [fromStation, setFromStation] = useState('');
   const [toStation, setToStation] = useState('');
-  const [routeSelectionOpened, setRouteSelectionOpened] = useState(false);
+  const { setActiveTab, setSelectedRoute, setRoutesFound, routeSelectionOpened, setRouteSelectionOpened } = useContext(TabContext);
 
   // Modal visibility states
   const [showFromModal, setShowFromModal] = useState(false);
@@ -41,7 +41,6 @@ const SearchRoutesScreen = () => {
   const [toSearchQuery, setToSearchQuery] = useState('');
   const [filteredFromStations, setFilteredFromStations] = useState(metroStation);
   const [filteredToStations, setFilteredToStations] = useState(metroStation);
-  const {setActiveTab, setSelectedRoute, setRoutesFound} = useContext(TabContext);
 
   const [showSquareAd, setShowSquareAd] = useState(false);
   const contentRef = useRef(null);
@@ -50,7 +49,7 @@ const SearchRoutesScreen = () => {
   useEffect(() => {
     if (showFromModal) {
       const filtered = allStations.filter(station =>
-        station.toLowerCase().includes(fromSearchQuery.toLowerCase()),
+        station.toLowerCase().includes(fromSearchQuery.toLowerCase().trim()),
       );
       setFilteredFromStations(filtered);
     }
@@ -59,7 +58,7 @@ const SearchRoutesScreen = () => {
   useEffect(() => {
     if (showToModal) {
       const filtered = allStations.filter(station =>
-        station.toLowerCase().includes(toSearchQuery.toLowerCase()),
+        station.toLowerCase().includes(toSearchQuery.toLowerCase().trim()),
       );
       setFilteredToStations(filtered);
     }

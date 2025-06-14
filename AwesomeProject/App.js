@@ -150,6 +150,8 @@ function AppContent({
   setRoutesFound,
   alertActive,
   setAlertActive,
+  routeSelectionOpened,
+  setRouteSelectionOpened,
 }) {
   const [currentCoordinates, setCurrentCoordinates] = useState(null);
   const [location, setLocation] = useState(null);
@@ -706,7 +708,9 @@ const handleSetAlert = async (route) => {
         handleSetAlert,
         alertActive,
         currentCoordinates,
-        setCurrentCoordinates
+        setCurrentCoordinates,
+        routeSelectionOpened,
+        setRouteSelectionOpened
       }}>
       <SafeAreaView
         style={[styles.safeArea, {backgroundColor: theme.softBackground}]}>
@@ -805,8 +809,7 @@ function App() {
   const [selectedRoute, setSelectedRoute] = useState([]);
   const [routesFound, setRoutesFound] = useState([]);
   const [alertActive, setAlertActive] = useState(false);
-
-
+  const [routeSelectionOpened, setRouteSelectionOpened] = useState(false);
 
   return (
     <ThemeProvider>
@@ -819,6 +822,8 @@ function App() {
         setRoutesFound={setRoutesFound}
         alertActive={alertActive}
         setAlertActive={setAlertActive}
+        routeSelectionOpened={routeSelectionOpened}
+        setRouteSelectionOpened={setRouteSelectionOpened}
       />
     </ThemeProvider>
   );
