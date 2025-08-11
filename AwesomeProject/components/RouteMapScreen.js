@@ -23,6 +23,7 @@ import {
 import CustomMarkerAnimated from './CustomMarkerAnimated';
 import { TabContext } from '../App';
 import Geolocation from '@react-native-community/geolocation';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 // const {width, height} = Dimensions.get('window');
 
@@ -605,6 +606,10 @@ const RouteMapScreen = () => {
     setActiveTab('search route'); // Switch back to search tab which shows route selection
   };
 
+  const handleBackPress = () => {
+    setActiveTab('search route');
+  };
+
   return (
     <>
       <View style={styles.headerSpace} />
@@ -616,6 +621,15 @@ const RouteMapScreen = () => {
       >
         <Text style={styles.locationButtonText}>📍</Text>
       </TouchableOpacity>
+      
+      <TouchableOpacity 
+        style={styles.backButtonTop}
+        onPress={handleBackPress}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.backButtonTopText}>←</Text>
+      </TouchableOpacity>
+      
       {selectedRoute?.path && selectedRoute?.path?.length > 0 && (
         <>
           <TouchableOpacity 
@@ -760,6 +774,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#2196F3',
     borderWidth: 2,
     borderColor: 'white',
+  },
+  backButtonTop: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+    zIndex: 10,
+  },
+  backButtonTopText: {
+    fontSize: 24,
+    fontWeight: 'bold',
   },
 });
 

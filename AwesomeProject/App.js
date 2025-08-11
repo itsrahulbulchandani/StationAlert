@@ -12,6 +12,7 @@ import {
   PermissionsAndroid,
   Dimensions,
   useColorScheme,
+  Image,
 } from 'react-native';
 import {
   PERMISSIONS,
@@ -28,6 +29,8 @@ import Geolocation from '@react-native-community/geolocation';
 import {requestTrackingPermission} from 'react-native-tracking-transparency';
 import {AdBanner} from './src/components/AdBanner';
 import './src/config/admob';
+import Icon from 'react-native-vector-icons/Ionicons';
+import LinearGradient from 'react-native-linear-gradient';
 
 import AlertScreen from './components/AlertScreen';
 import RouteMapScreen from './components/RouteMapScreen';
@@ -713,7 +716,7 @@ const handleSetAlert = async (route) => {
         setRouteSelectionOpened
       }}>
       <SafeAreaView
-        style={[styles.safeArea, {backgroundColor: theme.softBackground}]}>
+        style={[styles.safeArea, {backgroundColor: theme.safeAreaBackground}]}>
         <StatusBar
           barStyle={theme.statusBar.style}
           backgroundColor={theme.statusBar.background}
@@ -729,73 +732,87 @@ const handleSetAlert = async (route) => {
               onHide={() => setShowInAppNotification(false)}
             />
             
-            <View
-              style={[styles.header, {backgroundColor: theme.softBackground}]}>
-              <Text
-                style={[styles.headerTitle, {color: theme.headerTextColor}]}>
-                Next Stop
-              </Text>
-            </View>
 
+            
             <AlertOverlay isActive={alertActive} onStopAlerts={handleStopAlerts} route={activeRoute} />
-
-            <View
-              style={[
-                styles.tabContainer,
-                {backgroundColor: theme.softBackground},
-              ]}>
-              <TouchableOpacity
-                style={[
-                  styles.tabButton,
-                  activeTab === 'search route' && [
-                    styles.activeTabButton,
-                    {borderBottomColor: theme.tabBar.activeBorderColor},
-                  ],
-                ]}
-                onPress={() => setActiveTab('search route')}>
-                <Text
-                  style={[
-                    styles.tabText,
-                    {
-                      color:
-                        activeTab === 'search route'
-                          ? theme.tabBar.activeColor
-                          : theme.tabBar.inactiveColor,
-                    },
-                  ]}>
-                  Search Route
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.tabButton,
-                  activeTab === 'route' && [
-                    styles.activeTabButton,
-                    {borderBottomColor: theme.tabBar.activeBorderColor},
-                  ],
-                ]}
-                onPress={() => setActiveTab('route')}>
-                <Text
-                  style={[
-                    styles.tabText,
-                    {
-                      color:
-                        activeTab === 'route'
-                          ? theme.tabBar.activeColor
-                          : theme.tabBar.inactiveColor,
-                    },
-                  ]}>
-                  Map
-                </Text>
-              </TouchableOpacity>
-            </View>
 
             <View
               style={[styles.content, {backgroundColor: theme.softBackground}]}>
               {renderScreen()}
             </View>
             {!adError && activeTab !== 'search route' && <AdBanner />}
+
+            {/* Floating navigation bar */}
+            {/* <View style={styles.floatingNavContainer}>
+              <View style={[
+                styles.floatingNavBar,
+                {
+                  backgroundColor: theme.isDark ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                  borderWidth: 1,
+                  borderColor: theme.isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'
+                }
+              ]}>
+                <TouchableOpacity
+                  style={[
+                    styles.navButton,
+                    activeTab === 'search route' && [
+                      styles.activeNavButton,
+                      {backgroundColor: theme.isDark ? '#FFFFFF' : '#000000'}
+                    ],
+                  ]}
+                  onPress={() => setActiveTab('search route')}>
+                  <View style={styles.iconContainer}>
+                    <Icon 
+                      name="search" 
+                      size={22} 
+                      color={activeTab === 'search route' ? '#FFFFFF' : theme.isDark ? '#FFFFFF' : '#000000'} 
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.navButtonText,
+                      {
+                        color:
+                          activeTab === 'search route'
+                            ? '#FFFFFF'
+                            : theme.isDark ? '#B0B0B0' : '#000000',
+                      },
+                    ]}>
+                    Search Route
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.navButton,
+                    activeTab === 'route' && [
+                      styles.activeNavButton,
+                      {backgroundColor: theme.isDark ? '#FFFFFF' : '#000000'}
+                    ],
+                  ]}
+                  onPress={() => setActiveTab('route')}>
+                  <View style={styles.iconContainer}>
+                    <Icon 
+                      name="map-outline" 
+                      size={22} 
+                      color={activeTab === 'route' ? '#FFFFFF' : theme.isDark ? '#FFFFFF' : '#000000'} 
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.navButtonText,
+                      {
+                        color:
+                          activeTab === 'route'
+                            ? '#FFFFFF'
+                            : theme.isDark ? '#B0B0B0' : '#000000',
+                      },
+                    ]}>
+                    Map
+                  </Text>
+                </TouchableOpacity>
+              </View> 
+            </View> */}
           </>
         )}
       </SafeAreaView>
@@ -833,6 +850,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
+
   header: {
     paddingTop: normalize(24),
     paddingBottom: normalize(16),
@@ -859,37 +877,67 @@ const styles = StyleSheet.create({
     textShadowOffset: {width: 1, height: 1},
     textShadowRadius: 2,
   },
-  tabContainer: {
-    flexDirection: 'row',
-    height: normalize(48),
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: normalize(8),
-    borderBottomWidth: 1,
-  },
-  tabButton: {
-    flex: 1,
-    height: '100%',
+  // Floating navigation bar styles
+  floatingNavContainer: {
+    position: 'absolute',
+    bottom: normalize(30),
+    left: 0,
+    right: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    borderBottomWidth: 3,
-    borderBottomColor: 'transparent',
-    marginHorizontal: normalize(8),
+    zIndex: 100,
+    display: 'flex',
   },
-  activeTabButton: {
-    borderBottomWidth: 3,
+  floatingNavBar: {
+    flexDirection: 'row',
+    height: normalize(50),
+    width: '75%',
+    // width: 'fit-content',
+    borderRadius: normalize(25),
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.40,
+    shadowRadius: 3.84,
+    // paddingBottom: normalize(10),
+    elevation: 50,
+    paddingHorizontal: normalize(10),
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  tabText: {
-    fontSize: normalize(16),
+  navButton: {
+    flex: 1,
+    height: normalize(38),
+    borderRadius: normalize(19),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: normalize(12),
+    gap: 6,
+  },
+  activeNavButton: {
+    backgroundColor: '#000000',
+  },
+  navButtonText: {
+    fontSize: normalize(14),
     fontWeight: '600',
     textAlign: 'center',
-    fontFamily: 'System',
-    letterSpacing: 0.2,
+  },
+  iconContainer: {
+    // backgroundColor: 'rgba(128, 128, 128, 0.3)',
+    // width: 30,
+    // height: 30,
+    // borderRadius: 15,
+    // justifyContent: 'center',
+    // alignItems: 'center',
+    // marginRight: 4,
   },
   content: {
     flex: 1,
     zIndex: -1,
-    paddingTop: normalize(8),
+    // paddingTop: normalize(8),
   },
 });
 
