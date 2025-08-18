@@ -2,6 +2,7 @@
   "name": "AwesomeProject",
   "displayName": "AwesomeProject",
   "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-1713281088911988~5777662251",
     "ios_app_id": "ca-app-pub-1713281088911988~3311444024",
     "delay_app_measurement_init": true,
     "sk_ad_network_items": [

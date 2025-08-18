@@ -84,6 +84,9 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        
+        // Enable vector drawables
+        vectorDrawables.useSupportLibrary = true
     }
     signingConfigs {
         debug {
@@ -128,4 +131,11 @@ dependencies {
             force 'androidx.fragment:fragment:1.6.2'
         }
     }
+    
+    // MapLibre dependencies
+    implementation 'org.maplibre.gl:android-sdk:10.2.0'
+    
+    // OkHttp for custom protocol handler
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
 }

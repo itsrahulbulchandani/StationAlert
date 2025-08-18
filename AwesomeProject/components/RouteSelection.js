@@ -25,7 +25,7 @@ const pastelColors = [
 ];
 
 const RouteSelection = ({onClose}) => {
-  const {selectedRoute, routesFound, setSelectedRoute, setActiveTab, handleSetAlert, alertActive} = useContext(TabContext);
+  const {selectedRoute, routesFound, setSelectedRoute, setActiveTab, handleSetAlert, handleSetAlertAndroid, alertActive, setRouteSelectionOpened} = useContext(TabContext);
   const { theme } = useTheme();
   const [expandedIndex, setExpandedIndex] = useState(0);
 
@@ -103,12 +103,19 @@ const RouteSelection = ({onClose}) => {
               }}>
               <Text style={styles.primaryButtonText}>View On Map</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+                          <TouchableOpacity 
               style={[
                 styles.secondaryButton,
                 alertActive && styles.disabledButton
               ]} 
-              onPress={() => !alertActive && handleSetAlert(item)}
+              onPress={() => {
+                if (alertActive) return;
+                // Set the selected route and navigate to alert-tracking
+                setSelectedRoute(item);
+                handleSetAlertAndroid(item)
+                setRouteSelectionOpened(false);
+                setActiveTab('alert-tracking');
+              }}
               disabled={alertActive}
             >
               <Text style={[
@@ -248,6 +255,8 @@ const RouteSelection = ({onClose}) => {
           <AdBanner />
         </View>
       </SafeAreaView>
+      
+      {/* Alert Selection Modal removed - now using navigation */}
     </View>
   );
 };

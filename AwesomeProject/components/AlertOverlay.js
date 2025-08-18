@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useContext } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Platform,
   Animated,
 } from 'react-native';
+import { TabContext } from '../App';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { useTheme } from '../src/context/ThemeContext';
 import stationsFromKeys from './stationsFromKeys';
@@ -16,6 +17,7 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const AlertOverlay = ({ isActive, onStopAlerts, route }) => {
   const { theme } = useTheme();
+  const { setActiveTab } = useContext(TabContext);
   const translateY = useRef(new Animated.Value(0)).current;
   const offsetY = useRef(0); // Track the current position offset
   
@@ -105,12 +107,20 @@ const AlertOverlay = ({ isActive, onStopAlerts, route }) => {
                 ) : null}
               </View>
             </View>
-            <TouchableOpacity
-              style={[styles.stopButton, { backgroundColor: '#CC0000' }]}
-              onPress={onStopAlerts}
-            >
-              <Text style={styles.stopButtonText}>Stop Alerts</Text>
-            </TouchableOpacity>
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[styles.trackButton, { backgroundColor: '#2196F3' }]}
+                onPress={() => setActiveTab('alert-tracking')}
+              >
+                <Text style={styles.buttonText}>Track</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.stopButton, { backgroundColor: '#CC0000' }]}
+                onPress={onStopAlerts}
+              >
+                <Text style={styles.buttonText}>Stop</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Animated.View>
@@ -155,6 +165,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
   statusContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -182,11 +197,17 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   stopButton: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginLeft: 8,
+  },
+  trackButton: {
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
   },
-  stopButtonText: {
+  buttonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',

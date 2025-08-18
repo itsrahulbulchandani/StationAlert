@@ -9,6 +9,7 @@ const CustomMarkerAnimated = ({
   isTerminal = false,
   index = 0,
   totalMarkers = 1,
+  stationDot = false,
 }) => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   
@@ -70,6 +71,7 @@ const CustomMarkerAnimated = ({
             elevation: 10,
             transform: [{ scale: pulseAnim }],
           },
+          stationDot && styles.stationDot,
         ]}
       >
         {isTerminal && (
@@ -95,6 +97,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+  },
+  stationDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 12,
+    marginTop: 5,
   },
   marker: {
     justifyContent: 'center',

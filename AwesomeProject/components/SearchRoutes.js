@@ -390,16 +390,18 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 10
+    padding: 10,
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0
   },
   titleContainer: {
     paddingVertical: 15,
     paddingHorizontal: 20,
   },
   contentContainer: {
-    padding: 10,
+    padding: 0,
     paddingTop: 30,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
+    marginHorizontal: 5,
     backgroundColor: "#000000",
     borderRadius: 30,
     boxShadow: '0px 0px 20px 1px rgba(36, 6, 24, 0.9)',
@@ -567,8 +569,8 @@ const styles = StyleSheet.create({
     marginTop: 20,
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 15,
-    marginHorizontal: 10,
+    padding: 24,
+    marginHorizontal : 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,

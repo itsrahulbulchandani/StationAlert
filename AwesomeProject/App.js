@@ -33,9 +33,10 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
 
 import AlertScreen from './components/AlertScreen';
-import RouteMapScreen from './components/RouteMapScreen';
+// import RouteMapScreen from './components/RouteMapScreen';
 import MapScreen from './components/MapScreen';
 import SearchRouteScreen from './components/SearchRoutes';
+import AlertSelection from './components/AlertSelection';
 // import stations from './components/stations';
 import SplashScreen from './components/SplashScreen';
 import {ThemeProvider, useTheme} from './src/context/ThemeContext';
@@ -159,11 +160,14 @@ function AppContent({
   const [currentCoordinates, setCurrentCoordinates] = useState(null);
   const [location, setLocation] = useState(null);
   const [error, setError] = useState(null);
+  const [userBetweenStations, setUserBetweenStations] = useState(false);
+  const [nearestStationIndices, setNearestStationIndices] = useState({ prev: null, next: null });
   const [showSplash, setShowSplash] = useState(false);
   const [adError, setAdError] = useState(false);
   const [activeRoute, setActiveRoute] = useState(null);
   const [showInAppNotification, setShowInAppNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
+  const [startFromStationIndex, setStartFromStationIndex] = useState(0);
   const watchId = useRef(null);
   const appState = useRef(AppState.currentState);
   const {theme} = useTheme();
@@ -682,6 +686,193 @@ const handleSetAlert = async (route) => {
     console.log("setting alertActive to false")
     Alert.alert('Alerts Stopped', 'Station tracking alerts have been stopped.');
   };
+  
+  // Android-specific alert handler that allows selecting a specific station
+  const handleSetAlertAndroid = async (route, stationIndex = 0) => {
+    console.log('handleSetAlertAndroid called with route and station index:', route, stationIndex);
+    
+    if (!route || !route.path || route.path.length < 2) {
+      console.log('Invalid route:', route);
+      Alert.alert('Alert', 'Route is too short for alerts.');
+      return;
+    }
+
+    // Clear any existing watch
+    if (watchId.current) {
+      console.log('Clearing existing watch:', watchId.current);
+      Geolocation.clearWatch(watchId.current);
+      watchId.current = null;
+    }
+
+    // Check current permission status
+    const locationInfo = await checkLocationPermissionStatus();
+    const notificationStatus = await checkNotificationPermissionStatus();
+
+    console.log('Permission status:', {
+      location: getPermissionStatusText(locationInfo.status),
+      hasBackground: locationInfo.hasBackground,
+      notifications: getPermissionStatusText(notificationStatus)
+    });
+
+    // If permissions were previously granted but not optimal, show settings prompt
+    const hasPermissionIssues = (
+      locationInfo.status === RESULTS.BLOCKED || locationInfo.status === RESULTS.DENIED ||
+      notificationStatus === RESULTS.BLOCKED || notificationStatus === RESULTS.DENIED ||
+      (locationInfo.status === RESULTS.GRANTED && !locationInfo.hasBackground)
+    );
+
+    if (hasPermissionIssues) {
+      const promptShown = showPermissionSettingsPrompt(locationInfo, notificationStatus);
+      if (promptShown) {
+        return; // Exit early if we showed the settings prompt
+      }
+    }
+
+    // Request permissions if not granted
+    if (locationInfo.status !== RESULTS.GRANTED) {
+      const hasLocationPermission = await requestLocationPermission();
+      if (!hasLocationPermission) {
+        Alert.alert('Permission Required', 'Location permission is required for alerts.');
+        return;
+      }
+    }
+
+    // Set the active route when starting alerts
+    setActiveRoute(route);
+    
+    // Save the starting station index
+    setStartFromStationIndex(stationIndex);
+
+    // Get current location first to determine starting point
+    Geolocation.getCurrentPosition(
+      async (position) => {
+        // Configure for background location updates
+        console.log('Configuring background location updates...');
+        Geolocation.setRNConfiguration({
+          skipPermissionRequests: false,
+          authorizationLevel: 'always',
+          locationProvider: 'auto',
+          enableBackgroundLocationUpdates: true,
+          pauseLocationUpdatesAutomatically: false,
+          showsBackgroundLocationIndicator: true,
+          allowsBackgroundLocationUpdates: true
+        });
+        console.log('Background location configuration complete');
+
+        console.log('Setting up location tracking for route starting at station index:', stationIndex);
+        let currentIdx = stationIndex;
+        let lastUpdateTime = Date.now();
+
+        // Start at the selected station, alert for the next
+        const checkNextStation = (position) => {
+          const now = Date.now();
+          const timeSinceLastUpdate = now - lastUpdateTime;
+          lastUpdateTime = now;
+          setAlertActive(true);
+          // Update currentCoordinates for use in RouteMapScreen
+          setCurrentCoordinates(position);
+          console.log("setting alertActive to true and updating coordinates");
+
+          // Log app state and location update details
+          const appState = AppState.currentState;
+          console.log('alertactive Location update received:', {
+            appState,
+            timeSinceLastUpdate,
+            position: {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy,
+              timestamp: new Date(position.timestamp).toISOString()
+            }
+          });
+          
+          if (!route.path || currentIdx >= route.path.length - 1) {
+            console.log('Alert cleared - End of route');
+            if (watchId.current) {
+              Geolocation.clearWatch(watchId.current);
+              watchId.current = null;
+            }
+            console.log("setting alertActive to false")
+            setAlertActive(false);
+            return;
+          }
+
+          const nextStationId = route.path[currentIdx + 1];
+          const nextStation = stations[nextStationId];
+          const nextStationName = stationsFromKeys[nextStationId]
+          
+          if (!nextStation) {
+            console.log('Next station not found:', nextStationName);
+            return;
+          }
+
+          const {latitude: stationLat, longitude: stationLon} = nextStation.coords;
+          const {latitude: userLat, longitude: userLon} = position.coords;
+          const distance = getDistanceFromLatLonInMeters(userLat, userLon, stationLat, stationLon);
+
+          console.log('Location check:', {
+            appState,
+            userLocation: {lat: userLat, lon: userLon},
+            nextStation: {name: nextStationName, lat: stationLat, lon: stationLon},
+            distance: distance,
+            accuracy: position.coords.accuracy,
+            timeSinceLastUpdate
+          });
+
+          if (distance < 400) {
+            console.log('Station approaching alert triggered for:', nextStationName);
+            
+            // For Android, show in-app notification if in foreground
+            if (AppState.currentState === 'active') {
+              setNotificationMessage(`You are approaching ${nextStationName}!`);
+              setShowInAppNotification(true);
+            } else {
+              Alert.alert('Next Station Alert', `You are approaching ${nextStationName}!`);
+            }
+            
+            currentIdx++;
+            if (currentIdx >= route.path.length - 1) {
+              console.log('Alert cleared - Reached final station');
+              if (watchId.current) {
+                Geolocation.clearWatch(watchId.current);
+                watchId.current = null;
+              }
+              console.log("setting alertActive to false")
+              setAlertActive(false);
+            }
+          }
+        };
+
+        // Start watching position with background updates
+        console.log('Starting location watch with background updates...');
+        watchId.current = Geolocation.watchPosition(
+          checkNextStation,
+          (error) => {
+            console.log('Location error:', error);
+            console.log("setting alertActive to false")
+            setAlertActive(false);
+          },
+          { 
+            enableHighAccuracy: true,
+            distanceFilter: 10,  // Get updates when device moves by 10 meters
+            interval: 10000,    // Update every 10 seconds
+            fastestInterval: 5000,  // Fastest rate at which app can handle updates
+            maximumAge: 10000,  // Accept locations that are up to 10 seconds old
+            useSignificantChanges: false, // Get regular updates, not just significant ones
+            allowsBackgroundLocationUpdates: true // Enable background location updates
+          }  
+        );
+        
+        console.log('Location watching started with ID:', watchId.current);
+        Alert.alert('Alert Set', `You will be notified as you approach ${stationsFromKeys[route.path[stationIndex + 1]]}.`);
+      },
+      (error) => {
+        console.log('Location error:', error);
+        console.log("setting alertActive to false")
+        setAlertActive(false);
+      }
+    );
+  };
 
   const renderScreen = () => {
     switch (activeTab) {
@@ -689,10 +880,12 @@ const handleSetAlert = async (route) => {
         return <AlertScreen />;
       case 'search route':
         return <SearchRouteScreen />;
-      case 'route':
-        return <RouteMapScreen />;
+      // case 'route':
+        // return <RouteMapScreen />;
       case 'map':
         return <MapScreen />;
+      case 'alert-tracking':
+        return <AlertSelection route={selectedRoute} onClose={() => setActiveTab('search route')} />;
       default:
         return <RouteMapScreen />;
     }
@@ -709,11 +902,16 @@ const handleSetAlert = async (route) => {
         routesFound,
         setRoutesFound,
         handleSetAlert,
+        handleSetAlertAndroid,
         alertActive,
         currentCoordinates,
         setCurrentCoordinates,
         routeSelectionOpened,
-        setRouteSelectionOpened
+        setRouteSelectionOpened,
+        userBetweenStations,
+        setUserBetweenStations,
+        nearestStationIndices,
+        setNearestStationIndices
       }}>
       <SafeAreaView
         style={[styles.safeArea, {backgroundColor: theme.safeAreaBackground}]}>
@@ -737,7 +935,8 @@ const handleSetAlert = async (route) => {
             <AlertOverlay isActive={alertActive} onStopAlerts={handleStopAlerts} route={activeRoute} />
 
             <View
-              style={[styles.content, {backgroundColor: theme.softBackground}]}>
+              style={[styles.content, Platform.OS === 'ios' ? {backgroundColor: theme.softBackground} : null]}
+              >
               {renderScreen()}
             </View>
             {!adError && activeTab !== 'search route' && <AdBanner />}
@@ -852,7 +1051,7 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    paddingTop: normalize(24),
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight+20 : 0,
     paddingBottom: normalize(16),
     paddingHorizontal: normalize(24),
     alignItems: 'flex-start',
@@ -868,6 +1067,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: normalize(36),
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
     fontWeight: '800',
     letterSpacing: 1,
     textAlign: 'left',
@@ -936,7 +1136,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    zIndex: -1,
+    zIndex: Platform.OS === 'ios' ? -1 : 0, // Fix for Android visibility
     // paddingTop: normalize(8),
   },
 });
