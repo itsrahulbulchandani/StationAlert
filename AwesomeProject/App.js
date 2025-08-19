@@ -682,12 +682,15 @@ const handleSetAlert = async (route) => {
       watchId.current = null;
     }
     setAlertActive(false);
+    if(activeTab == 'alert-tracking') {
+      setActiveTab('search route');
+    }
     setActiveRoute(null);
     console.log("setting alertActive to false")
     Alert.alert('Alerts Stopped', 'Station tracking alerts have been stopped.');
   };
   
-  // Android-specific alert handler that allows selecting a specific station
+  // Android-specific alert handler that allows selecting  specific station
   const handleSetAlertAndroid = async (route, stationIndex = 0) => {
     console.log('handleSetAlertAndroid called with route and station index:', route, stationIndex);
     

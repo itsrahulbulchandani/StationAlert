@@ -4,7 +4,7 @@ import { Animated, View, StyleSheet, Easing } from 'react-native';
 const CustomMarkerAnimated = ({
   color,
   size = 12,
-  borderWidth = 2,
+  borderWidth = 0,
   borderColor = '#FFFFFF',
   isTerminal = false,
   index = 0,
@@ -50,7 +50,8 @@ const CustomMarkerAnimated = ({
     };
   }, [pulseAnim, isTerminal, index, totalMarkers]);
 
-  const shadowRadius = Math.max(size / 2, 6);
+  // const shadowRadius = Math.max(size / 2, 6);
+  const shadowRadius = 0; // for android
 
   return (
     <View style={styles.container}>
@@ -68,7 +69,7 @@ const CustomMarkerAnimated = ({
             shadowOffset: { width: 0, height: 0 },
             shadowOpacity: 0.8,
             shadowRadius: shadowRadius,
-            elevation: 10,
+            // elevation: 10,
             transform: [{ scale: pulseAnim }],
           },
           stationDot && styles.stationDot,
@@ -97,6 +98,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    zIndex: 1000000, // Increased z-index to be higher than station name div
   },
   stationDot: {
     width: 12,
@@ -109,7 +111,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    zIndex: 2,
+    zIndex: 1000000, // Increased z-index to be higher than station name div
   },
   centralDot: {
     position: 'absolute',

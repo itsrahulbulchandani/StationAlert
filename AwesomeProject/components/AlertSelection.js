@@ -686,8 +686,8 @@ const AlertSelection = ({ route, onClose }) => {
           {isUpcoming ? (
             <CustomMarkerAnimated
               color={stationColor}
-              size={16}
-              borderWidth={3}
+              size={24}
+              borderWidth={0}
               borderColor={theme.background}
               index={index - selectedStationIndex}
               totalMarkers={route?.path?.length - selectedStationIndex || 1}
@@ -737,24 +737,16 @@ const AlertSelection = ({ route, onClose }) => {
             
             {/* User location indicator (always show between stations) */}
             {isPrevStation && nearestStationIndices.next === index + 1 && (
-              <Animated.View 
-                style={[
-                  styles.userLocationIndicator,
-                  { 
-                    top: userLocationAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: ['0%', '100%']
-                    }),
-                    // Make sure the dot is visible
-                    opacity: 1
-                  }
-                ]}
-              >
-                {/* Pulse animation around the dot */}
+              <>
+                {/* Pulse animation as a separate element */}
                 <Animated.View 
                   style={[
                     styles.userLocationPulse,
                     {
+                      top: userLocationAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0%', '100%']
+                      }),
                       opacity: pulseAnim.interpolate({
                         inputRange: [0, 1],
                         outputRange: [0.7, 0]
@@ -769,16 +761,30 @@ const AlertSelection = ({ route, onClose }) => {
                   ]} 
                 />
                 
-                {/* Inner dot for better visibility */}
-                <View style={styles.userLocationInner} />
-                
-                {/* Direction indicator */}
-                {travelDirection === 'forward' ? (
-                  <View style={styles.userLocationArrowDown} />
-                ) : (
-                  <View style={styles.userLocationArrowUp} />
-                )}
-              </Animated.View>
+                {/* Main indicator dot */}
+                <Animated.View 
+                  style={[
+                    styles.userLocationIndicator,
+                    { 
+                      top: userLocationAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0%', '100%']
+                      }),
+                      opacity: 1
+                    }
+                  ]}
+                >
+                  {/* Inner dot for better visibility */}
+                  <View style={styles.userLocationInner} />
+                  
+                  {/* Direction indicator */}
+                  {/* {travelDirection === 'forward' ? (
+                    <View style={styles.userLocationArrowDown} />
+                  ) : (
+                    <View style={styles.userLocationArrowUp} />
+                  )} */}
+                </Animated.View>
+              </>
             )}
           </View>
         )}
@@ -875,13 +881,14 @@ const styles = StyleSheet.create({
   stationItem: {
     marginBottom: 4,
     borderRadius: 16,
-    overflow: 'hidden',
+    // Removed overflow: 'hidden' to prevent clipping the pulse animation
   },
   stationContent: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     paddingLeft: 16,
-    paddingVertical: 8,
+    paddingVertical: 0,
+    zIndex: 1, // Lower z-index to ensure it doesn't block the pulse animation
   },
   pastStationItem: {
     opacity: 0.6,
@@ -893,10 +900,10 @@ const styles = StyleSheet.create({
     marginRight: 16,
     marginTop: 5,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 3,
+    // shadowOffset: { width: 0, height: 0 },
+    // shadowOpacity: 0.2,
+    // shadowRadius: 2,
+    // elevation: 3,
   },
   interchangeDot: {
     width: 20,
@@ -907,6 +914,7 @@ const styles = StyleSheet.create({
   },
   stationTextContainer: {
     flex: 1,
+    zIndex: 1, // Lower z-index to ensure it doesn't block the pulse animation
   },
   stationName: {
     fontSize: 18,
@@ -932,7 +940,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF9800',
     borderRadius: 16,
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 0,
     alignSelf: 'flex-start',
     marginTop: 6,
     shadowColor: '#FF9800',
@@ -952,7 +960,7 @@ const styles = StyleSheet.create({
     width: 4,
     marginLeft: 22,
     position: 'relative',
-    zIndex: 99999,
+    zIndex: 1, // Lower z-index to prevent blocking pulse animation
   },
   connectionLine: {
     height: 56,
@@ -975,27 +983,28 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.5,
     shadowRadius: 5,
-    elevation: 8,
-    zIndex: 100, // Higher z-index to ensure visibility
+    elevation: 15, // Increased elevation for Android
+    zIndex: 9999999, // Higher z-index to ensure visibility
     justifyContent: 'center',
     alignItems: 'center',
   },
   userLocationPulse: {
     position: 'absolute',
-    top: -14,
-    left: -14,
+    left: -27, // Adjusted for positioning as a separate element
     width: 54,
     height: 54,
     borderRadius: 27,
-    backgroundColor: 'rgba(46, 196, 182, 0.35)',
-    zIndex: 99,
+    backgroundColor: 'rgba(46, 196, 182, 0.6)', // Increased opacity for better visibility
+    zIndex: 9999999999,
+    elevation: 20, // Increased elevation for Android
+    pointerEvents: 'none', // Make sure it doesn't block touch events
   },
   userLocationInner: {
     width: 12,
     height: 12,
     borderRadius: 6,
     backgroundColor: '#FFFFFF',
-    zIndex: 101, // Higher than the indicator
+    zIndex: 999999, // Higher than the indicator
   },
   userLocationArrowDown: {
     width: 0,

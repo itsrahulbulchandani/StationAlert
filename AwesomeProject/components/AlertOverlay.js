@@ -17,7 +17,7 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const AlertOverlay = ({ isActive, onStopAlerts, route }) => {
   const { theme } = useTheme();
-  const { setActiveTab } = useContext(TabContext);
+  const { activeTab, setActiveTab } = useContext(TabContext);
   const translateY = useRef(new Animated.Value(0)).current;
   const offsetY = useRef(0); // Track the current position offset
   
@@ -108,12 +108,12 @@ const AlertOverlay = ({ isActive, onStopAlerts, route }) => {
               </View>
             </View>
             <View style={styles.buttonContainer}>
-              <TouchableOpacity
+              {activeTab != 'alert-tracking' && <TouchableOpacity
                 style={[styles.trackButton, { backgroundColor: '#2196F3' }]}
                 onPress={() => setActiveTab('alert-tracking')}
               >
                 <Text style={styles.buttonText}>Track</Text>
-              </TouchableOpacity>
+              </TouchableOpacity>}
               <TouchableOpacity
                 style={[styles.stopButton, { backgroundColor: '#CC0000' }]}
                 onPress={onStopAlerts}

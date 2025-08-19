@@ -95,15 +95,16 @@ const RouteSelection = ({onClose}) => {
           )}
           
           <View style={styles.buttonRow}>
-            <TouchableOpacity
+            //removed for android
+            {/* <TouchableOpacity
               style={styles.primaryButton}
               onPress={() => {
                 setSelectedRoute(item);
                 setActiveTab('route');
               }}>
               <Text style={styles.primaryButtonText}>View On Map</Text>
-            </TouchableOpacity>
-                          <TouchableOpacity 
+            </TouchableOpacity> */}
+            <TouchableOpacity 
               style={[
                 styles.secondaryButton,
                 alertActive && styles.disabledButton
