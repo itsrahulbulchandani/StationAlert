@@ -14,6 +14,7 @@ import {
 import { TabContext } from '../App';
 import { useTheme } from '../src/context/ThemeContext';
 import stationsFromKeys from './stationsFromKeys';
+import stationsWithIDs from './stationsWithIDs';
 import CustomMarkerAnimated from './CustomMarkerAnimated';
 
 const AlertSelection = ({ route, onClose }) => {
@@ -216,37 +217,20 @@ const AlertSelection = ({ route, onClose }) => {
       // This is a simplified example using hardcoded values for the specific route
       // Dilshad Garden to Shastri Park route
       let stationCoords;
+
+      console.log("DEBUG: Station ID:", stationId, routePath);
       
-      // Hardcoded coordinates for the Delhi Metro Red Line stations from Dilshad Garden to Shastri Park
-      const stationPositions = {
-        // These are approximate coordinates - replace with actual values
-        'dilshad_garden': { latitude: 28.6725, longitude: 77.3215 },
-        'jhilmil': { latitude: 28.6686, longitude: 77.3149 },
-        'mansarovar_park': { latitude: 28.6633, longitude: 77.3066 },
-        'shahdara': { latitude: 28.6667, longitude: 77.2903 },
-        'welcome': { latitude: 28.6681, longitude: 77.2786 },
-        'seelampur': { latitude: 28.6691, longitude: 77.2658 },
-        'shastri_park': { latitude: 28.6677, longitude: 77.2511 },
-      };
-      
-      // Map station IDs to the hardcoded positions
-      // This is a placeholder - in a real app, you'd have a proper mapping
-      const stationMap = {
-        '1': 'dilshad_garden',
-        '2': 'jhilmil',
-        '3': 'mansarovar_park',
-        '4': 'shahdara',
-        '5': 'welcome',
-        '6': 'seelampur',
-        '7': 'shastri_park',
-      };
-      
-      const stationKey = stationMap[stationId] || `station_${stationId}`;
-      stationCoords = stationPositions[stationKey] || {
+      // Get station coordinates from stationsWithIDs
+      if (stationsWithIDs[stationId] && stationsWithIDs[stationId].coords) {
+        stationCoords = stationsWithIDs[stationId].coords;
+      } else {
         // Fallback to dummy coordinates if station not found
-        latitude: 28.6725 - (i * 0.005),
-        longitude: 77.3215 - (i * 0.01)
-      };
+        stationCoords = {
+          latitude: 28.6725 - (i * 0.005),
+          longitude: 77.3215 - (i * 0.01)
+        };
+        console.log(`Warning: No coordinates found for station ID ${stationId}`);
+      }
       
       stationCoordinates.push({
         id: stationId,
@@ -395,6 +379,45 @@ const AlertSelection = ({ route, onClose }) => {
         progressRatio = Math.max(0, Math.min(1, distanceFromPrev / segmentLength));
       }
     }
+
+    // --- Snapping Logic ---
+  const SNAP_DISTANCE_METERS = 100; 
+  const SNAP_RATIO = 0.05; // 5%
+
+  const distToPrev = calculateDistance(
+    currentLocation.coords.latitude,
+    currentLocation.coords.longitude,
+    stationCoordinates[prevStation].coords.latitude,
+    stationCoordinates[prevStation].coords.longitude
+  );
+
+  const distToNext = calculateDistance(
+    currentLocation.coords.latitude,
+    currentLocation.coords.longitude,
+    stationCoordinates[nextStation].coords.latitude,
+    stationCoordinates[nextStation].coords.longitude
+  );
+
+  // Snap to prev station
+  if (distToPrev <= SNAP_DISTANCE_METERS || progressRatio <= SNAP_RATIO) {
+    return {
+      prevStation,
+      nextStation: prevStation,
+      progressRatio: 1,
+      isAtStation: true
+    };
+  }
+
+  // Snap to next station
+  if (distToNext <= SNAP_DISTANCE_METERS || progressRatio >= 1 - SNAP_RATIO) {
+    return {
+      prevStation: nextStation,
+      nextStation,
+      progressRatio: 0,
+      isAtStation: true
+    };
+  }
+
     
     return {
       prevStation,
@@ -846,8 +869,8 @@ const styles = StyleSheet.create({
     paddingBottom: 16
   },
   headerTitle: {
-    fontSize: 26,
-    fontWeight: '700',
+    fontSize:46,
+    fontWeight: '900',
     letterSpacing: 0.3,
   },
   closeButton: {
@@ -867,11 +890,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   instructionText: {
-    fontSize: 17,
+    fontSize: 19,
     padding: 20,
     paddingTop: 12,
-    paddingBottom: 8,
-    fontWeight: '500',
+    paddingBottom: 40,
+    fontWeight: '600',
     letterSpacing: 0.2,
   },
   listContainer: {
