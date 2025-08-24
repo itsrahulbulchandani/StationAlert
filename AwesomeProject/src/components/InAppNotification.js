@@ -6,6 +6,7 @@ import {
   Animated,
   Dimensions,
   TouchableOpacity,
+  StatusBar,
 } from 'react-native';
 
 const {width} = Dimensions.get('window');
@@ -66,7 +67,7 @@ const InAppNotification = ({message, isVisible, onHide}) => {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 80,
+    top: StatusBar.currentHeight+20,
     left: 0,
     right: 0,
     backgroundColor: '#2196F3',

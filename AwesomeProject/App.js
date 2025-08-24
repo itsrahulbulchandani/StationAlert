@@ -25,7 +25,9 @@ import {
 } from 'react-native-permissions';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import PushNotificationIOS from '@react-native-community/push-notification-ios';
+import PushNotification from 'react-native-push-notification';
 import Geolocation from '@react-native-community/geolocation';
+import { NativeModules } from 'react-native';
 import {requestTrackingPermission} from 'react-native-tracking-transparency';
 import {AdBanner} from './src/components/AdBanner';
 import './src/config/admob';
@@ -218,6 +220,30 @@ function AppContent({
       } catch (error) {
         console.error('Error in iOS notification initialization:', error);
       }
+    } else if (Platform.OS === 'android') {
+      // Android notification configuration - simplified to avoid Firebase errors
+      try {
+        console.log('Initializing Android notifications...');
+        
+        // Only create the notification channel without configuring the entire system
+        // This avoids Firebase initialization errors
+        PushNotification.createChannel(
+          {
+            channelId: 'station-alerts',
+            channelName: 'Station Alerts',
+            channelDescription: 'Notifications for approaching stations',
+            playSound: true,
+            soundName: 'default',
+            importance: 4,
+            vibrate: true,
+          },
+          (created) => console.log(`Channel created: ${created}`)
+        );
+        
+        console.log('Android notification channel created');
+      } catch (error) {
+        console.error('Error creating Android notification channel:', error);
+      }
     }
     
     // App state change listener for background/foreground transitions
@@ -227,7 +253,7 @@ function AppContent({
       } else if (appState.current === 'active' && nextAppState.match(/inactive|background/)) {
         console.log('App has gone to the background!');
         // Ensure location updates continue in background
-        if (watchId.current) {
+        if (watchId.current && alertActive) {
           Geolocation.setRNConfiguration({
             skipPermissionRequests: false,
             authorizationLevel: 'always',
@@ -235,6 +261,33 @@ function AppContent({
             enableBackgroundLocationUpdates: true,
             pauseLocationUpdatesAutomatically: false,
           });
+          
+          // Start the foreground service when app goes to background if alerts are active
+          if (Platform.OS === 'android') {
+            console.log('App going to background - ensuring foreground service is running');
+            try {
+              const { startLocationService } = require('./LocationTask');
+              
+              // Get current position to pass to the service
+              Geolocation.getCurrentPosition(
+                position => {
+                  startLocationService({
+                    initialLocation: {
+                      latitude: position.coords.latitude,
+                      longitude: position.coords.longitude,
+                      accuracy: position.coords.accuracy
+                    },
+                    route: activeRoute?.path,
+                    isBackground: true
+                  });
+                },
+                error => console.error('Error getting position for background service:', error),
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+              );
+            } catch (error) {
+              console.error('Error starting foreground service on background:', error);
+            }
+          }
         }
       }
       appState.current = nextAppState;
@@ -680,7 +733,29 @@ const handleSetAlert = async (route) => {
       console.log('Stopping alerts and clearing watch:', watchId.current);
       Geolocation.clearWatch(watchId.current);
       watchId.current = null;
+      
+      // Stop the foreground service on Android when alerts are stopped
+      if (Platform.OS === 'android') {
+        console.log('Stopping Android foreground service...');
+        try {
+          // Remove the persistent notification
+          PushNotification.cancelLocalNotification(9999);
+          
+          // Stop our custom foreground service
+          const { stopLocationService } = require('./LocationTask');
+          stopLocationService().then(success => {
+            if (success) {
+              console.log('Foreground service stopped successfully');
+            } else {
+              console.error('Failed to stop foreground service');
+            }
+          });
+        } catch (error) {
+          console.error('Error stopping foreground service:', error);
+        }
+      }
     }
+    
     setAlertActive(false);
     if(activeTab == 'alert-tracking') {
       setActiveTab('search route');
@@ -821,16 +896,71 @@ const handleSetAlert = async (route) => {
             accuracy: position.coords.accuracy,
             timeSinceLastUpdate
           });
+          
+          // Send location data to headless task when in background (Android only)
+          if (Platform.OS === 'android' && AppState.currentState !== 'active') {
+            try {
+              // Use the LocationModule directly
+              const { NativeModules } = require('react-native');
+              const LocationModule = NativeModules.LocationModule;
+              
+              if (LocationModule) {
+                // Create data object for the headless task
+                const locationData = {
+                  location: {
+                    latitude: userLat,
+                    longitude: userLon,
+                    accuracy: position.coords.accuracy
+                  },
+                  nextStationName,
+                  distance,
+                  timestamp: new Date().toISOString()
+                };
+                
+                // Send data to the headless task via the service intent
+                LocationModule.startLocationService(locationData)
+                  .then(result => {
+                    console.log('Started background location service with data:', result);
+                  })
+                  .catch(err => {
+                    console.error('Failed to start location service:', err);
+                  });
+              } else {
+                console.error('LocationModule not available');
+              }
+            } catch (error) {
+              console.error('Failed to start headless task:', error);
+            }
+          }
 
           if (distance < 400) {
             console.log('Station approaching alert triggered for:', nextStationName);
             
-            // For Android, show in-app notification if in foreground
-            if (AppState.currentState === 'active') {
-              setNotificationMessage(`You are approaching ${nextStationName}!`);
-              setShowInAppNotification(true);
-            } else {
-              Alert.alert('Next Station Alert', `You are approaching ${nextStationName}!`);
+            if (Platform.OS === 'android') {
+              try {
+                // Show in-app notification if app is in foreground
+                if (AppState.currentState === 'active') {
+                  setNotificationMessage(`You are approaching ${nextStationName}!`);
+                  setShowInAppNotification(true);
+                }
+                
+                // ALWAYS send push notification (like iOS does) - regardless of app state
+                PushNotification.localNotification({
+                  channelId: 'station-alerts',
+                  title: "Next Station Alert",
+                  message: `You are approaching ${nextStationName}!`,
+                  playSound: true,
+                  soundName: 'default',
+                  importance: 'high',
+                  vibrate: true,
+                  priority: 'high',
+                  visibility: 'public',
+                  ignoreInForeground: false, // Show notification even in foreground
+                });
+                console.log('Android notification sent successfully from state:', AppState.currentState);
+              } catch (error) {
+                console.error('Error sending Android notification:', error);
+              }
             }
             
             currentIdx++;
@@ -846,6 +976,44 @@ const handleSetAlert = async (route) => {
           }
         };
 
+        // For Android, start a foreground service to keep the app running in background
+        if (Platform.OS === 'android') {
+          console.log('Starting Android foreground service for background location tracking...');
+          
+          // Import the location service functions
+          const { startLocationService } = require('./LocationTask');
+          
+          // Start the foreground service with location data
+          startLocationService({
+            initialLocation: {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy
+            },
+            route: route.path,
+            currentStationIndex: stationIndex
+          }).then(success => {
+            if (success) {
+              console.log('Foreground service started successfully');
+            } else {
+              console.error('Failed to start foreground service');
+            }
+          });
+          
+          // Create a foreground service notification channel if it doesn't exist
+          PushNotification.createChannel(
+            {
+              channelId: 'location-tracking', // Different channel for the service
+              channelName: 'Location Tracking Service',
+              channelDescription: 'Keeps the app running in background for location tracking',
+              playSound: false,
+              importance: 3, // High importance
+              vibrate: false,
+            },
+            (created) => console.log(`Location tracking channel created: ${created}`)
+          );
+        }
+        
         // Start watching position with background updates
         console.log('Starting location watch with background updates...');
         watchId.current = Geolocation.watchPosition(
@@ -862,7 +1030,15 @@ const handleSetAlert = async (route) => {
             fastestInterval: 5000,  // Fastest rate at which app can handle updates
             maximumAge: 10000,  // Accept locations that are up to 10 seconds old
             useSignificantChanges: false, // Get regular updates, not just significant ones
-            allowsBackgroundLocationUpdates: true // Enable background location updates
+            allowsBackgroundLocationUpdates: true, // Enable background location updates
+            // Android specific options to keep the service running
+            ...(Platform.OS === 'android' ? {
+              foregroundService: {
+                notificationTitle: "Station Alert Active",
+                notificationBody: "Tracking your location for station alerts",
+                notificationColor: "#2196F3",
+              }
+            } : {})
           }  
         );
         

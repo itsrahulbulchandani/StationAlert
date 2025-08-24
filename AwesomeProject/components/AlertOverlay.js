@@ -7,6 +7,7 @@ import {
   Dimensions,
   Platform,
   Animated,
+  StatusBar,
 } from 'react-native';
 import { TabContext } from '../App';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
@@ -131,7 +132,7 @@ const AlertOverlay = ({ isActive, onStopAlerts, route }) => {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 100 : 80,
+    top: Platform.OS === 'ios' ? 100 : StatusBar.currentHeight+20,
     left: 0,
     right: 0,
     alignItems: 'center',

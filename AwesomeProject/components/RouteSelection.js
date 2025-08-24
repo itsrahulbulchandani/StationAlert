@@ -95,7 +95,7 @@ const RouteSelection = ({onClose}) => {
           )}
           
           <View style={styles.buttonRow}>
-            //removed for android
+            {/* removed for android */}
             {/* <TouchableOpacity
               style={styles.primaryButton}
               onPress={() => {
@@ -216,7 +216,7 @@ const RouteSelection = ({onClose}) => {
 
   return (
     <View style={styles.modalContainer}>
-      {Platform.OS === 'ios' ? (
+      {true ? (
         <BlurView
           style={styles.modalBackgroundBlur}
           blurType="light"
