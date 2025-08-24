@@ -33,6 +33,8 @@ import {AdBanner} from './src/components/AdBanner';
 import './src/config/admob';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
+import { Provider as PaperProvider } from 'react-native-paper';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import AlertScreen from './components/AlertScreen';
 // import RouteMapScreen from './components/RouteMapScreen';
@@ -1103,22 +1105,20 @@ const handleSetAlert = async (route) => {
           <SplashScreen onFinish={() => setShowSplash(false)} />
         ) : (
           <>
-            <InAppNotification
-              message={notificationMessage}
-              isVisible={showInAppNotification}
-              onHide={() => setShowInAppNotification(false)}
-            />
-            
-
-            
-            <AlertOverlay isActive={alertActive} onStopAlerts={handleStopAlerts} route={activeRoute} />
-
             <View
               style={[styles.content, Platform.OS === 'ios' ? {backgroundColor: theme.softBackground} : null]}
               >
               {renderScreen()}
             </View>
             {!adError && activeTab !== 'search route' && <AdBanner />}
+            
+            <AlertOverlay isActive={alertActive} onStopAlerts={handleStopAlerts} route={activeRoute} />
+            
+            <InAppNotification
+              message={notificationMessage}
+              isVisible={showInAppNotification}
+              onHide={() => setShowInAppNotification(false)}
+            />
 
             {/* Floating navigation bar */}
             {/* <View style={styles.floatingNavContainer}>
@@ -1207,20 +1207,24 @@ function App() {
   const [routeSelectionOpened, setRouteSelectionOpened] = useState(false);
 
   return (
-    <ThemeProvider>
-      <AppContent
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        selectedRoute={selectedRoute}
-        setSelectedRoute={setSelectedRoute}
-        routesFound={routesFound}
-        setRoutesFound={setRoutesFound}
-        alertActive={alertActive}
-        setAlertActive={setAlertActive}
-        routeSelectionOpened={routeSelectionOpened}
-        setRouteSelectionOpened={setRouteSelectionOpened}
-      />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <PaperProvider>
+        <ThemeProvider>
+          <AppContent
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            selectedRoute={selectedRoute}
+            setSelectedRoute={setSelectedRoute}
+            routesFound={routesFound}
+            setRoutesFound={setRoutesFound}
+            alertActive={alertActive}
+            setAlertActive={setAlertActive}
+            routeSelectionOpened={routeSelectionOpened}
+            setRouteSelectionOpened={setRouteSelectionOpened}
+          />
+        </ThemeProvider>
+      </PaperProvider>
+    </SafeAreaProvider>
   );
 }
 

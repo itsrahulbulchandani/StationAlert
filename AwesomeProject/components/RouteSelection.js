@@ -1,4 +1,4 @@
-import React, {useState, useContext} from 'react';
+import React, {useState, useContext, useEffect} from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import stationsFromKeys from './stationsFromKeys';
 import { lightenColor } from '../utilities/helper';
 import { AdBanner } from '../src/components/AdBanner';
 import { BlurView } from '@react-native-community/blur';
+import { showInterstitialAd, preloadInterstitialAd } from '../src/components/InterstitialAd';
 
 const { width } = Dimensions.get('window');
 
@@ -28,6 +29,12 @@ const RouteSelection = ({onClose}) => {
   const {selectedRoute, routesFound, setSelectedRoute, setActiveTab, handleSetAlert, handleSetAlertAndroid, alertActive, setRouteSelectionOpened} = useContext(TabContext);
   const { theme } = useTheme();
   const [expandedIndex, setExpandedIndex] = useState(0);
+
+  // Preload interstitial ad when component mounts
+  useEffect(() => {
+    // Preload an interstitial ad for better user experience
+    preloadInterstitialAd();
+  }, []);
 
   const toggleExpand = index => {
     setExpandedIndex(expandedIndex === index ? null : index);
@@ -111,11 +118,17 @@ const RouteSelection = ({onClose}) => {
               ]} 
               onPress={() => {
                 if (alertActive) return;
-                // Set the selected route and navigate to alert-tracking
+                
+                // Set the selected route
                 setSelectedRoute(item);
-                handleSetAlertAndroid(item)
-                setRouteSelectionOpened(false);
-                setActiveTab('alert-tracking');
+                
+                // Show interstitial ad before setting alert
+                showInterstitialAd(() => {
+                  // This callback runs after the ad is closed or fails to load
+                  handleSetAlertAndroid(item);
+                  setRouteSelectionOpened(false);
+                  setActiveTab('alert-tracking');
+                });
               }}
               disabled={alertActive}
             >
