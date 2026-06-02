@@ -4,6 +4,10 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+	<key>UIAppFonts</key>
+    <array>
+    <string>Ionicons.ttf</string>
+    </array>
 	<key>LSApplicationCategoryType</key>
 	<string></string>
 	<key>NSHumanReadableCopyright</key>

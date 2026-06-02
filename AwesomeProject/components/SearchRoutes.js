@@ -26,8 +26,7 @@ import { SquareAd } from '../src/components/SquareAd';
 import { AdBanner } from '../src/components/AdBanner';
 import { BlurView } from '@react-native-community/blur';
 import LinearGradient from 'react-native-linear-gradient';
-import Icon from 'react-native-vector-icons/Ionicons';
-
+import Ionicons from 'react-native-vector-icons/Ionicons';
 const { width } = Dimensions.get('window');
 
 const SearchRoutesScreen = () => {
@@ -53,8 +52,6 @@ const SearchRoutesScreen = () => {
 
   // Add recent searches state
   const [recentSearches, setRecentSearches] = useState([
-    { from: 'Rajiv Chowk', to: 'Botanical Garden' },
-    { from: 'Noida Sector 62', to: 'Rajiv Chowk' },
     { from: 'Kashmere Gate', to: 'Huda City Centre' },
   ]);
 
@@ -250,23 +247,25 @@ const SearchRoutesScreen = () => {
                 <View style={styles.recentSearchContent}>
                   <View style={styles.recentSearchStations}>
                     <Text style={styles.recentSearchText}>{search.from}</Text>
-                    <Icon name="arrow-forward" size={16} color="#000000" style={styles.arrowIcon} />
+                    <Ionicons name='arrow-forward' size={16} color="#000000" style={styles.arrowIcon} />
                     <Text style={styles.recentSearchText}>{search.to}</Text>
                   </View>
-                  <Icon name="time-outline" size={18} color="#666666" />
+                  <Ionicons name="time-outline" size={18} color="#666666" />
                 </View>
               </TouchableOpacity>
             ))}
           </View>
 
           {/* Show square ad if space available, otherwise show banner ad */}
-          {showSquareAd ? (
+          {/* {showSquareAd ? (
             <View style={styles.squareAdContainer}>
               <SquareAd />
             </View>
           ) : (
-            <AdBanner />
-          )}
+            <View style={styles.squareAdContainer}>
+            <AdBanner />            
+            </View>         
+          )} */}
         </ScrollView>
 
         {/* FROM Modal */}

@@ -7,6 +7,7 @@ export const lightTheme = {
   accentColor: '#000000', // Changed to black
   borderColor: '#E0E0E0', // Grayscale
   labelColor: '#7B7B7B', // Grayscale
+  labelColor2: '#000000', // Grayscale
   headerTextColor: '#000000',
   tabBar: {
     background: '#FFFFFF',
@@ -33,14 +34,15 @@ export const lightTheme = {
 
 export const darkTheme = {
   background: '#000000',
-  text: '#FFFFFF',
+  text: '#000000',
   softBackground: '#121212',
   safeAreaBackground: '#000000',
   cardBackground: '#1A1A1A',
   accentColor: '#FFFFFF', // Changed to white
   borderColor: '#333333', // Grayscale
   labelColor: '#9B9B9B', // Grayscale
-  headerTextColor: '#FFFFFF',
+  labelColor2: '#000000', // Grayscale
+  headerTextColor: '#000000',
   tabBar: {
     background: '#000000',
     border: '#2C2C2C', // Grayscale

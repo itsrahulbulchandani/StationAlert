@@ -91,7 +91,7 @@ const RouteSelection = ({onClose}) => {
               </View>
             </View>
           ) : (
-            <Text style={[styles.directRouteText, { color: theme.labelColor }]}>Direct Route</Text>
+            <Text style={[styles.directRouteText, { color: theme.labelColor2 }]}>Direct Route</Text>
           )}
           
           <View style={styles.buttonRow}>
@@ -121,7 +121,7 @@ const RouteSelection = ({onClose}) => {
           </View>
           
           <View style={styles.tapHintContainer}>
-            <Text style={[styles.tapHintText, { color: theme.labelColor }]}>
+            <Text style={[styles.tapHintText, { color: theme.labelColor2 }]}>
               {index === expandedIndex ? 'Hide full route' : 'Tap to see full route'}
             </Text>
           </View>

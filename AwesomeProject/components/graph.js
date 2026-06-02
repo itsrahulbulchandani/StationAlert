@@ -283,10 +283,17 @@ let graphWithIds = {
   67: {
     66: 1565.43,
     148: 1287.65,
+    68: 1287.65
+  },
+  68: {
+    67: 1287.65,
+    69: 1354.32,
+    168: 987.65,
   },
   69: {
     70: 1765.43,
     148: 1354.32,
+    68: 1287.65
   },
   70: {
     69: 1765.43,
@@ -894,6 +901,37 @@ let graphWithIds = {
     87: 1310.1,
     207: 1320.2,
   },
+  225: {
+    226: 1320.2,
+  },
+  226: {
+    225: 1310.1,
+    227: 1320.2,
+  },
+  227: {
+    226: 1310.1,
+    228: 1320.2,
+  },
+  228: {
+    227: 1310.1,
+    229: 1320.2,
+  },
+  229: {
+    228: 1310.1,
+    230: 1320.2,
+  },
+  230: {
+    229: 1310.1,
+    231: 1320.2,
+  },
+  231: {
+    230: 1310.1,
+    232: 1320.2,
+  },
+  232: {
+    231: 1310.1,
+    1: 1320.2,
+  },
   233: {
     79: 1432.1,
     234: 1765.43,
@@ -1016,6 +1054,14 @@ let graphWithIds = {
 
 let colorLinesWithIds = {
   //Red Line
+  225: '#CC0000', // Dilshad Garden
+  226: '#CC0000', // Dilshad Garden
+  227: '#CC0000', // Dilshad Garden
+  228: '#CC0000', // Dilshad Garden
+  229: '#CC0000', // Dilshad Garden
+  230: '#CC0000', // Dilshad Garden
+  231: '#CC0000', // Dilshad Garden
+  232: '#CC0000', // Dilshad Garden
   1: '#CC0000', // Dilshad Garden
   2: '#CC0000', // Jhilmil
   3: '#CC0000', // Mansrover park
@@ -1279,6 +1325,7 @@ let colorLinesWithIds = {
   56: 'interchange', // Dilli Haat - INA
   59: 'interchange', // Hauz Khas
   148: 'interchange', // Sikanderpur (Rapid Metro)
+  68: 'interchange', // Sikanderpur (Rapid Metro)
   127: 'interchange', // Lajpat Nagar
   131: 'interchange', // Kalkaji Mandir
   16: 'interchange', // Netaji Subash Place
@@ -1351,6 +1398,7 @@ let interchangeStationsWithColors = {
   
   // Sikanderpur (148) - Yellow, Rapid Metro
   148: ['#F7D117', '#00AEEF'],
+  68: ['#F7D117', '#00AEEF'],
   
   // Lajpat Nagar (127) - Pink, Violet
   127: ['#FF69B4', '#8F00FF'],

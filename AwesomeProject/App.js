@@ -28,6 +28,7 @@ import PushNotificationIOS from '@react-native-community/push-notification-ios';
 import Geolocation from '@react-native-community/geolocation';
 import {requestTrackingPermission} from 'react-native-tracking-transparency';
 import {AdBanner} from './src/components/AdBanner';
+import VersionCheckService from './src/components/VersionCheckService';
 import './src/config/admob';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
@@ -187,6 +188,8 @@ function AppContent({
     };
 
     initializeApp();
+    // Check for updates when the app starts (using test mode)
+    VersionCheckService.checkForUpdate();
 
     // iOS notification configuration
     if (Platform.OS === 'ios') {
@@ -740,7 +743,7 @@ const handleSetAlert = async (route) => {
               style={[styles.content, {backgroundColor: theme.softBackground}]}>
               {renderScreen()}
             </View>
-            {!adError && activeTab !== 'search route' && <AdBanner />}
+            {!adError && activeTab !== 'search route' && <></>}
 
             {/* Floating navigation bar */}
             {/* <View style={styles.floatingNavContainer}>
