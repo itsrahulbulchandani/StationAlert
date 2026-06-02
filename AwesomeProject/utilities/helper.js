@@ -327,6 +327,86 @@ export const findAllRoutes2  = (graph, start, end, stationLines, maxDepth = 50) 
   return sortedBasedOnInterchanges?.slice(0,1);
 }
 
+// Returns several distinct route candidates (not just the single best) so the
+// UI can offer alternative options. Reuses the same colour/interchange logic
+// as findAllRoutes2 without altering it.
+export const findRouteOptions = (graph, start, end, stationLines, maxOptions = 4, maxDepth = 50) => {
+  if (!graph[start] || !graph[end]) return [];
+  const allRoutes = [];
+
+  const createColorPath = (path) => {
+    let colorPath = [];
+    for (let i = 0; i < path.length; i++) {
+      const currentStation = path[i];
+      const currentStationLine = stationLines[currentStation];
+      if (currentStationLine === 'interchange') {
+        const interchangeColors = interchangeStationsWithColors[currentStation];
+        const prevColor = i > 0 ? colorPath[i - 1] : null;
+        let nextColor = null;
+        let j = i + 1;
+        while (j < path.length && stationLines[path[j]] === 'interchange') j++;
+        if (j < path.length) nextColor = colorLinesWithIds[path[j]];
+        if (prevColor && interchangeColors.includes(prevColor)) colorPath.push(prevColor);
+        else if (nextColor && interchangeColors.includes(nextColor)) colorPath.push(nextColor);
+        else if (interchangeColors.length > 0) colorPath.push(interchangeColors[0]);
+      } else {
+        colorPath.push(colorLinesWithIds[currentStation]);
+      }
+    }
+    return colorPath;
+  };
+
+  const countInterchanges = (path) => {
+    let interchanges = 0;
+    let interChangeStations = [];
+    let currentLine = null;
+    let lineChangeColors = [];
+    let colorPath = createColorPath(path);
+    for (let i = 0; i < path.length; i++) {
+      if (i === 0) { currentLine = colorPath[0]; continue; }
+      if (colorPath[i] !== currentLine) {
+        interchanges++;
+        interChangeStations.push(path[i - 1]);
+        lineChangeColors.push(colorPath[i]);
+        currentLine = colorPath[i];
+      }
+    }
+    return { interchanges, interChangeStations, lineChangeColors, colorPath };
+  };
+
+  function dfs(currentStation, path, totalDistance, visited) {
+    if (currentStation === end) {
+      const { interchanges, interChangeStations, lineChangeColors, colorPath } = countInterchanges(path);
+      allRoutes.push({
+        path: [...path], distance: totalDistance, interchanges,
+        interChangeStations, colorPath: [...colorPath], lineChangeColors: [...lineChangeColors],
+      });
+      return;
+    }
+    if (path.length > maxDepth) return;
+    const neighbors = graph[currentStation];
+    for (const neighbor in neighbors) {
+      if (visited.has(neighbor)) continue;
+      const newVisited = new Set(visited);
+      newVisited.add(neighbor);
+      dfs(neighbor, [...path, neighbor], totalDistance + neighbors[neighbor], newVisited);
+    }
+  }
+  dfs(start, [start], 0, new Set([start]));
+
+  // De-duplicate by interchange signature, keep variety of options.
+  const seen = new Set();
+  const distinct = [];
+  for (const r of allRoutes.sort((a, b) => a.distance - b.distance)) {
+    const sig = `${r.interchanges}-${r.interChangeStations.join(',')}`;
+    if (seen.has(sig)) continue;
+    seen.add(sig);
+    distinct.push(r);
+    if (distinct.length >= maxOptions) break;
+  }
+  return distinct;
+};
+
 // Example usage:
 // const graph = {
 //   'Station A': { 'Station B': 5 },

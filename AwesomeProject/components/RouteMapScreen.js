@@ -24,6 +24,23 @@ import CustomMarkerAnimated from './CustomMarkerAnimated';
 import { TabContext } from '../App';
 import Geolocation from '@react-native-community/geolocation';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { SafeAreaView } from 'react-native';
+import stationsFromKeys from './stationsFromKeys';
+import { computeRouteMetrics, getLineInfo, lightenHex } from '../utilities/routeMetrics';
+
+const RED = '#E5252B';
+const METRO_LINES = [
+  { name: 'Red Line', color: '#CC0000' },
+  { name: 'Yellow Line', color: '#F7D117' },
+  { name: 'Blue Line', color: '#0000FF' },
+  { name: 'Green Line', color: '#008000' },
+  { name: 'Violet Line', color: '#8F00FF' },
+  { name: 'Pink Line', color: '#FF69B4' },
+  { name: 'Magenta Line', color: '#800080' },
+  { name: 'Aqua Line', color: '#00FFFF' },
+  { name: 'Grey Line', color: '#808080' },
+  { name: 'Orange Line', color: '#FFA500' },
+];
 
 // const {width, height} = Dimensions.get('window');
 
@@ -46,6 +63,9 @@ const RouteMapScreen = () => {
   const [currentZoom, setCurrentZoom] = useState(10);
   const { selectedRoute=[], setSelectedRoute, alertActive, currentCoordinates, setActiveTab, setRoutesFound, setRouteSelectionOpened } = useContext(TabContext);
   const [currentLocation, setCurrentLocation] = useState(null);
+  const [viewMode, setViewMode] = useState('route'); // 'route' | 'all'
+  const [showLegend, setShowLegend] = useState(false);
+  const [hiddenLines, setHiddenLines] = useState([]); // line color hexes hidden on map
   const mapRef = useRef(null);
   const hasRequestedLocation = useRef(false);
   const hasAnimatedToRoute = useRef(false);
@@ -63,6 +83,57 @@ const RouteMapScreen = () => {
 
   // Track if we're at max zoom level (18)
   const isMaxZoom = currentZoom >= 18;
+
+  const hasRoute = selectedRoute?.path && selectedRoute.path.length > 0;
+  const showRoute = viewMode === 'route' && hasRoute;
+  const hiddenSet = useMemo(
+    () => new Set(hiddenLines.map(c => (c || '').toLowerCase())),
+    [hiddenLines],
+  );
+  const routeMetrics = useMemo(
+    () => (hasRoute ? computeRouteMetrics(selectedRoute) : null),
+    [hasRoute, selectedRoute],
+  );
+  const viaName = hasRoute && selectedRoute.interChangeStations?.length
+    ? stationsFromKeys[selectedRoute.interChangeStations[0]]
+    : null;
+
+  // During an active alert, keep the journey pinned to the route view.
+  useEffect(() => {
+    if (alertActive) setViewMode('route');
+  }, [alertActive]);
+
+  const toggleLine = color => {
+    const c = (color || '').toLowerCase();
+    setHiddenLines(prev =>
+      prev.map(x => x.toLowerCase()).includes(c)
+        ? prev.filter(x => x.toLowerCase() !== c)
+        : [...prev, c]);
+  };
+
+  const zoomBy = async delta => {
+    if (!mapRef.current) return;
+    try {
+      const cam = await mapRef.current.getCamera();
+      if (cam.zoom != null) cam.zoom = Math.max(1, cam.zoom + delta);
+      if (cam.altitude != null) cam.altitude = delta > 0 ? cam.altitude / 2 : cam.altitude * 2;
+      mapRef.current.animateCamera(cam, { duration: 250 });
+    } catch (e) {}
+  };
+
+  const recenter = () => {
+    if (showRoute) {
+      const coords = getRouteCoordinates(selectedRoute.path);
+      if (coords && mapRef.current) {
+        mapRef.current.fitToCoordinates(coords, {
+          edgePadding: { top: 160, right: 60, bottom: 220, left: 60 },
+          animated: true,
+        });
+      }
+    } else if (mapRef.current) {
+      mapRef.current.animateToRegion(initialRegion, 600);
+    }
+  };
 
   console.log("currentZoom",isMaxZoom, currentZoom,scale)
 
@@ -172,6 +243,13 @@ const RouteMapScreen = () => {
       const { latitude, longitude } = currentCoordinates.coords;
       console.log("Updating map with alert tracking coordinates:", { latitude, longitude });
       setCurrentLocation({ latitude, longitude });
+      // Auto-follow the user's live position during active journey tracking.
+      if (mapRef.current) {
+        mapRef.current.animateToRegion(
+          { latitude, longitude, latitudeDelta: 0.03, longitudeDelta: 0.03 },
+          800,
+        );
+      }
     }
   }, [alertActive, currentCoordinates]);
 
@@ -460,7 +538,7 @@ const RouteMapScreen = () => {
             <MapView
               key={mapKey}
               ref={mapRef}
-              style={{flex: 1, margin: 10}}
+              style={{flex: 1}}
               cameraZoomRange={CameraZoomRange}
               initialRegion={initialRegion}
               preserveClusterData={true}
@@ -482,15 +560,41 @@ const RouteMapScreen = () => {
                     </View>
                   </Marker>
                 )}
-                {Object.entries(shapes).map(([shapeId, coordinates]) => (
-                  <Polyline
-                    key={shapeId}
-                    coordinates={coordinates}
-                    strokeColor={coordinates[0].shape_color}
-                    strokeWidth={4}
-                  />
-                ))}
-                {selectedRoute?.path && selectedRoute?.path?.length > 0 ? 
+                {Object.entries(shapes).map(([shapeId, coordinates]) => {
+                  const col = (coordinates[0]?.shape_color || '').toLowerCase();
+                  if (hiddenSet.has(col)) return null;
+                  return (
+                    <Polyline
+                      key={shapeId}
+                      coordinates={coordinates}
+                      strokeColor={coordinates[0].shape_color}
+                      strokeWidth={showRoute ? 2.5 : 4}
+                    />
+                  );
+                })}
+                {/* Highlighted selected route, coloured per line segment */}
+                {showRoute && (() => {
+                  const path = selectedRoute.path;
+                  const colorPath = selectedRoute.colorPath || [];
+                  const segs = [];
+                  let cur = null;
+                  path.forEach((id, i) => {
+                    const st = memoizedStations.find(s => s.id == id);
+                    if (!st) return;
+                    const color = getLineInfo(colorPath[i]).color;
+                    if (!cur || cur.color !== color) {
+                      cur = { color, coords: [] };
+                      // connect segments visually
+                      if (segs.length) cur.coords.push(segs[segs.length - 1].coords.slice(-1)[0]);
+                      segs.push(cur);
+                    }
+                    cur.coords.push(st.coords);
+                  });
+                  return segs.map((seg, i) => (
+                    <Polyline key={`rseg-${i}`} coordinates={seg.coords} strokeColor={seg.color} strokeWidth={6} />
+                  ));
+                })()}
+                {showRoute ?
                  (
                   selectedRoute?.path?.map((marker,index) =>{
                     let stationFound = memoizedStations?.find(
@@ -519,6 +623,7 @@ const RouteMapScreen = () => {
                   })
                 ) : 
                 memoizedStations.map(marker => {
+                  if (hiddenSet.has((marker.color_code || '').toLowerCase())) return null;
                   if (marker.interchange === "TRUE") {
                     return (
                       <Marker
@@ -581,74 +686,173 @@ const RouteMapScreen = () => {
   // Memoize the TestMapScreen component to prevent unnecessary re-renders
   const MapComponent = useMemo(() => {
     return TestMapScreen();
-  }, [shapes, memoizedStations, selectedRoute?.path?.length, isMaxZoom, currentLocation]);
-
-  const handleClearRoute = () => {
-    if (setSelectedRoute) {
-      setSelectedRoute([]); // Clear the selected route
-      setRoutesFound([]); // Clear the routes found
-      setRouteSelectionOpened(false); // Ensure route selection modal is closed
-      hasAnimatedToRoute.current = false; // Reset the animation flag
-      // Force rerender by updating showMarkers
-      setShowMarkers(false);
-      setTimeout(() => {
-        setShowMarkers(true);
-      }, 50);
-    }
-  };
-
-  const handleBackToRoutes = () => {
-    // Keep the current route in routesFound so it's still visible in the route selection screen
-    if (selectedRoute) {
-      setRoutesFound([selectedRoute]);
-      setRouteSelectionOpened(true); // Open the route selection modal
-    }
-    setActiveTab('search route'); // Switch back to search tab which shows route selection
-  };
+  }, [shapes, memoizedStations, selectedRoute?.path?.length, isMaxZoom, currentLocation, showRoute, hiddenSet]);
 
   const handleBackPress = () => {
     setActiveTab('search route');
   };
 
+  const handleViewDetails = () => {
+    if (selectedRoute) {
+      setRoutesFound([selectedRoute]);
+      setRouteSelectionOpened(true);
+    }
+    setActiveTab('search route');
+  };
+
   return (
-    <>
-      <View style={styles.headerSpace} />
+    <View style={styles.root}>
       {stationsLoaded && !loading && showMarkers && MapComponent}
-      <TouchableOpacity 
-        style={styles.locationButton}
-        onPress={getCurrentLocation}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.locationButtonText}>📍</Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity 
-        style={styles.backButtonTop}
-        onPress={handleBackPress}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.backButtonTopText}>←</Text>
-      </TouchableOpacity>
-      
-      {selectedRoute?.path && selectedRoute?.path?.length > 0 && (
-        <>
-          <TouchableOpacity 
-            style={styles.clearButton}
-            onPress={handleClearRoute}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.clearButtonText}>Clear Route</Text>
+
+      {/* Top header */}
+      <SafeAreaView style={styles.topSafe} pointerEvents="box-none">
+        <View style={styles.headerBar} pointerEvents="box-none">
+          <TouchableOpacity style={styles.circleBtn} onPress={handleBackPress} activeOpacity={0.7}>
+            <Icon name="arrow-back" size={22} color="#1A1A1A" />
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={handleBackToRoutes}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.backButtonText}>Back to Routes</Text>
+          <Text style={styles.headerTitle}>Metro Map</Text>
+          <TouchableOpacity style={styles.circleBtn} onPress={() => setShowLegend(true)} activeOpacity={0.7}>
+            <Icon name="options-outline" size={20} color="#1A1A1A" />
           </TouchableOpacity>
-        </>
+        </View>
+
+        {/* Route summary card */}
+        {routeMetrics && (
+          <View style={styles.routeCard}>
+            <View style={styles.routeCardTop}>
+              <View style={styles.routeStations}>
+                <View style={styles.routeStationRow}>
+                  <View style={[styles.routeDot, {backgroundColor: routeMetrics.startLine.color}]} />
+                  <Text style={styles.routeStationName} numberOfLines={1}>{routeMetrics.fromName}</Text>
+                  <View style={[styles.miniPill, {backgroundColor: lightenHex(routeMetrics.startLine.color)}]}>
+                    <Text style={[styles.miniPillText, {color: routeMetrics.startLine.color}]}>{routeMetrics.startLine.name}</Text>
+                  </View>
+                </View>
+                <View style={styles.routeConnector} />
+                <View style={styles.routeStationRow}>
+                  <View style={[styles.routeDot, {backgroundColor: routeMetrics.endLine.color}]} />
+                  <Text style={styles.routeStationName} numberOfLines={1}>{routeMetrics.toName}</Text>
+                  <View style={[styles.miniPill, {backgroundColor: lightenHex(routeMetrics.endLine.color)}]}>
+                    <Text style={[styles.miniPillText, {color: routeMetrics.endLine.color}]}>{routeMetrics.endLine.name}</Text>
+                  </View>
+                </View>
+              </View>
+              <View style={styles.routeStatsDivider} />
+              <View style={styles.routeStats}>
+                <View style={styles.routeStat}>
+                  <Text style={styles.routeStatValue}>{routeMetrics.durationMin}</Text>
+                  <Text style={styles.routeStatLabel}>min</Text>
+                </View>
+                <View style={styles.routeStat}>
+                  <Text style={styles.routeStatValue}>{routeMetrics.interchanges}</Text>
+                  <Text style={styles.routeStatLabel}>Interchange</Text>
+                </View>
+                <View style={styles.routeStat}>
+                  <Text style={styles.routeStatValue}>{`₹${routeMetrics.fare}`}</Text>
+                  <Text style={styles.routeStatLabel}>Fare</Text>
+                </View>
+              </View>
+            </View>
+            <View style={styles.routeCardBottom}>
+              {alertActive ? (
+                <View style={styles.liveRow}>
+                  <View style={styles.liveDotPulse} />
+                  <Text style={styles.liveTrackingText}>Live Tracking Active</Text>
+                </View>
+              ) : (
+                <View style={styles.viaRow}>
+                  <Icon name="walk" size={16} color="#666" />
+                  <Text style={styles.viaText} numberOfLines={1}>{viaName ? `via ${viaName}` : 'Direct route'}</Text>
+                </View>
+              )}
+              <TouchableOpacity style={styles.viewDetailsBtn} onPress={handleViewDetails} activeOpacity={0.7}>
+                <Text style={styles.viewDetailsText}>View Details</Text>
+                <Icon name="chevron-forward" size={16} color={RED} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      </SafeAreaView>
+
+      {/* Right-side map controls */}
+      <View style={styles.rightControls} pointerEvents="box-none">
+        <TouchableOpacity style={styles.controlBtn} onPress={getCurrentLocation} activeOpacity={0.7}>
+          <Icon name="locate" size={22} color="#1A1A1A" />
+        </TouchableOpacity>
+        <View style={styles.zoomGroup}>
+          <TouchableOpacity style={styles.zoomBtn} onPress={() => zoomBy(1)} activeOpacity={0.7}>
+            <Icon name="add" size={24} color="#1A1A1A" />
+          </TouchableOpacity>
+          <View style={styles.zoomDivider} />
+          <TouchableOpacity style={styles.zoomBtn} onPress={() => zoomBy(-1)} activeOpacity={0.7}>
+            <Icon name="remove" size={24} color="#1A1A1A" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Bottom-left Legend / bottom-right Center */}
+      <View style={styles.bottomActions} pointerEvents="box-none">
+        <TouchableOpacity style={styles.pillBtn} onPress={() => setShowLegend(true)} activeOpacity={0.7}>
+          <Icon name="layers-outline" size={18} color="#1A1A1A" />
+          <Text style={styles.pillBtnText}>Legend</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.pillBtn} onPress={recenter} activeOpacity={0.7}>
+          <Icon name="locate" size={18} color={RED} />
+          <Text style={[styles.pillBtnText, {color: RED}]}>Center</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Bottom segmented control (All Lines / Route) */}
+      <SafeAreaView style={styles.segmentSafe} pointerEvents="box-none">
+        <View style={styles.segmentBar}>
+          <TouchableOpacity
+            style={[styles.segment, viewMode === 'all' && styles.segmentActive, alertActive && styles.segmentDisabled]}
+            onPress={() => !alertActive && setViewMode('all')}
+            activeOpacity={alertActive ? 1 : 0.7}>
+            <Icon name="git-network-outline" size={18} color={viewMode === 'all' ? RED : (alertActive ? '#CCC' : '#777')} />
+            <Text style={[styles.segmentText, viewMode === 'all' && styles.segmentTextActive, alertActive && {color: '#CCC'}]}>All Lines</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.segment, viewMode === 'route' && styles.segmentActive, !hasRoute && styles.segmentDisabled]}
+            onPress={() => hasRoute && setViewMode('route')}
+            activeOpacity={hasRoute ? 0.7 : 1}>
+            <Icon name="navigate" size={18} color={viewMode === 'route' ? RED : (hasRoute ? '#777' : '#CCC')} />
+            <Text style={[styles.segmentText, viewMode === 'route' && styles.segmentTextActive, !hasRoute && {color: '#CCC'}]}>Route</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+
+      {/* Legend / line filter sheet */}
+      {showLegend && (
+        <View style={styles.legendBackdrop}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setShowLegend(false)} />
+          <View style={styles.legendSheet}>
+            <View style={styles.legendHandle} />
+            <View style={styles.legendHeader}>
+              <Text style={styles.legendTitle}>Lines</Text>
+              <TouchableOpacity onPress={() => setShowLegend(false)} style={styles.legendClose}>
+                <Icon name="close" size={20} color="#444" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.legendHint}>Tap a line to show or hide it on the map.</Text>
+            {METRO_LINES.map(line => {
+              const hidden = hiddenSet.has(line.color.toLowerCase());
+              return (
+                <TouchableOpacity key={line.color} style={styles.legendRow} onPress={() => toggleLine(line.color)} activeOpacity={0.7}>
+                  <View style={[styles.legendDash, {backgroundColor: line.color, opacity: hidden ? 0.3 : 1}]} />
+                  <Text style={[styles.legendLineName, hidden && {color: '#BBB'}]}>{line.name}</Text>
+                  <Icon name={hidden ? 'eye-off-outline' : 'eye-outline'} size={20} color={hidden ? '#BBB' : RED} />
+                </TouchableOpacity>
+              );
+            })}
+            <View style={styles.legendRow}>
+              <Icon name="ellipse-outline" size={18} color="#000" style={{marginRight: 10}} />
+              <Text style={styles.legendLineName}>Interchange Station</Text>
+            </View>
+          </View>
+        </View>
       )}
-    </>
+    </View>
   );
 };
 
@@ -678,80 +882,94 @@ const SmallCallout = ({ text }) => (
 );
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    padding: 10,
+  root: { flex: 1, backgroundColor: '#EAEAEA' },
+  topSafe: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20 },
+  headerBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6,
   },
-  headerSpace: {
-    height: 1,
+  headerTitle: { fontSize: 22, fontWeight: '800', color: '#1A1A1A' },
+  circleBtn: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff',
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
   },
-  mapContainer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    padding: 10,
-    margin: 10,
-    borderRadius: 8,
-    overflow: 'hidden',
+  routeCard: {
+    backgroundColor: '#fff', borderRadius: 18, marginHorizontal: 16, marginTop: 4, padding: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 6,
   },
-  clearButton: {
-    position: 'absolute',
-    bottom: 30,
-    right: 30,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 25,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
+  routeCardTop: { flexDirection: 'row', alignItems: 'center' },
+  routeStations: { flex: 1 },
+  routeStationRow: { flexDirection: 'row', alignItems: 'center' },
+  routeDot: { width: 11, height: 11, borderRadius: 6, marginRight: 8 },
+  routeStationName: { fontSize: 16, fontWeight: '800', color: '#1A1A1A', maxWidth: 130 },
+  miniPill: { borderRadius: 7, paddingHorizontal: 7, paddingVertical: 2, marginLeft: 8 },
+  miniPillText: { fontSize: 11, fontWeight: '700' },
+  routeConnector: { width: 1, height: 12, backgroundColor: '#D5D5D5', marginLeft: 5, marginVertical: 2 },
+  routeStatsDivider: { width: 1, height: 44, backgroundColor: '#EEE', marginHorizontal: 12 },
+  routeStats: { flexDirection: 'row' },
+  routeStat: { alignItems: 'center', marginLeft: 12 },
+  routeStatValue: { fontSize: 16, fontWeight: '800', color: '#1A1A1A' },
+  routeStatLabel: { fontSize: 11, color: '#9A9A9A', marginTop: 1 },
+  routeCardBottom: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderTopWidth: 1, borderTopColor: '#F0F0F0', marginTop: 12, paddingTop: 10,
   },
-  clearButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 14,
+  viaRow: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  viaText: { fontSize: 14, color: '#555', fontWeight: '600', marginLeft: 8 },
+  liveRow: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  liveDotPulse: { width: 9, height: 9, borderRadius: 5, backgroundColor: RED, marginRight: 8 },
+  liveTrackingText: { fontSize: 14, color: RED, fontWeight: '700' },
+  viewDetailsBtn: { flexDirection: 'row', alignItems: 'center' },
+  viewDetailsText: { color: RED, fontSize: 14, fontWeight: '700', marginRight: 2 },
+
+  rightControls: { position: 'absolute', right: 16, top: '32%', alignItems: 'center', zIndex: 15 },
+  controlBtn: {
+    width: 46, height: 46, borderRadius: 23, backgroundColor: '#fff',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 5,
   },
-  backButton: {
-    position: 'absolute',
-    bottom: 30,
-    right: 160, // Position it to the left of the Clear Route button
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 25,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
+  zoomGroup: {
+    backgroundColor: '#fff', borderRadius: 23, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 5,
   },
-  backButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 14,
+  zoomBtn: { width: 46, height: 46, alignItems: 'center', justifyContent: 'center' },
+  zoomDivider: { height: 1, backgroundColor: '#EEE' },
+
+  bottomActions: {
+    position: 'absolute', left: 16, right: 16, bottom: 172,
+    flexDirection: 'row', justifyContent: 'space-between', zIndex: 15,
   },
-  locationButton: {
-    position: 'absolute',
-    bottom: 30,
-    left: 30,
-    backgroundColor: 'white',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    zIndex: 1000,
+  pillBtn: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
+    borderRadius: 24, paddingHorizontal: 16, paddingVertical: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 5,
   },
-  locationButtonText: {
-    fontSize: 24,
+  pillBtnText: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', marginLeft: 8 },
+
+  segmentSafe: { position: 'absolute', left: 0, right: 0, bottom: 96, zIndex: 15 },
+  segmentBar: {
+    flexDirection: 'row', backgroundColor: '#fff', borderRadius: 22,
+    marginHorizontal: 16, marginBottom: 10, padding: 6,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 8,
   },
+  segment: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 16 },
+  segmentActive: { backgroundColor: '#FDECEC' },
+  segmentDisabled: { opacity: 0.6 },
+  segmentText: { fontSize: 15, fontWeight: '700', color: '#777', marginLeft: 8 },
+  segmentTextActive: { color: RED },
+
+  legendBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end', zIndex: 50 },
+  legendSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 36 },
+  legendHandle: { width: 40, height: 5, borderRadius: 3, backgroundColor: '#D9D9D9', alignSelf: 'center', marginBottom: 10 },
+  legendHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  legendTitle: { fontSize: 22, fontWeight: '800', color: '#1A1A1A' },
+  legendClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F2F2F2', alignItems: 'center', justifyContent: 'center' },
+  legendHint: { fontSize: 13, color: '#9A9A9A', marginTop: 4, marginBottom: 10 },
+  legendRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F4F4F4' },
+  legendDash: { width: 26, height: 5, borderRadius: 3, marginRight: 12 },
+  legendLineName: { flex: 1, fontSize: 16, fontWeight: '600', color: '#1A1A1A' },
+
   currentLocationMarker: {
     width: 30,
     height: 30,
@@ -774,27 +992,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#2196F3',
     borderWidth: 2,
     borderColor: 'white',
-  },
-  backButtonTop: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'white',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-    zIndex: 10,
-  },
-  backButtonTopText: {
-    fontSize: 24,
-    fontWeight: 'bold',
   },
 });
 

@@ -34,6 +34,8 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
 
 import AlertScreen from './components/AlertScreen';
+import ProfileScreen from './components/ProfileScreen';
+import {loadJSON, saveJSON, STORAGE_KEYS} from './src/utils/storage';
 import RouteMapScreen from './components/RouteMapScreen';
 import MapScreen from './components/MapScreen';
 import SearchRouteScreen from './components/SearchRoutes';
@@ -156,6 +158,14 @@ function AppContent({
   setAlertActive,
   routeSelectionOpened,
   setRouteSelectionOpened,
+  recentSearches,
+  setRecentSearches,
+  favourites,
+  setFavourites,
+  recentStations,
+  setRecentStations,
+  favouriteStations,
+  setFavouriteStations,
 }) {
   const [currentCoordinates, setCurrentCoordinates] = useState(null);
   const [location, setLocation] = useState(null);
@@ -696,10 +706,20 @@ const handleSetAlert = async (route) => {
         return <RouteMapScreen />;
       case 'map':
         return <MapScreen />;
+      case 'profile':
+        return <ProfileScreen />;
       default:
-        return <RouteMapScreen />;
+        return <SearchRouteScreen />;
     }
   };
+
+  const TABS = [
+    { key: 'search route', label: 'Home', icon: 'home', iconOutline: 'home-outline' },
+    { key: 'route', label: 'Routes', icon: 'git-network', iconOutline: 'git-network-outline' },
+    { key: 'map', label: 'Map', icon: 'map', iconOutline: 'map-outline' },
+    { key: 'alert', label: 'Alerts', icon: 'notifications', iconOutline: 'notifications-outline' },
+    { key: 'profile', label: 'Profile', icon: 'person', iconOutline: 'person-outline' },
+  ];
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -716,7 +736,15 @@ const handleSetAlert = async (route) => {
         currentCoordinates,
         setCurrentCoordinates,
         routeSelectionOpened,
-        setRouteSelectionOpened
+        setRouteSelectionOpened,
+        recentSearches,
+        setRecentSearches,
+        favourites,
+        setFavourites,
+        recentStations,
+        setRecentStations,
+        favouriteStations,
+        setFavouriteStations
       }}>
       <SafeAreaView
         style={[styles.safeArea, {backgroundColor: theme.safeAreaBackground}]}>
@@ -744,6 +772,33 @@ const handleSetAlert = async (route) => {
               {renderScreen()}
             </View>
             {!adError && activeTab !== 'search route' && <></>}
+
+            {/* Bottom Tab Bar */}
+            <View style={styles.bottomTabContainer}>
+              <View style={styles.bottomTabBar}>
+                {TABS.map(tab => {
+                  const active = activeTab === tab.key;
+                  return (
+                    <TouchableOpacity
+                      key={tab.key}
+                      style={styles.bottomTab}
+                      activeOpacity={0.7}
+                      onPress={() => setActiveTab(tab.key)}>
+                      <View style={[styles.bottomTabIconWrap, active && styles.bottomTabIconWrapActive]}>
+                        <Icon
+                          name={active ? tab.icon : tab.iconOutline}
+                          size={22}
+                          color={active ? '#E5252B' : '#9A9A9A'}
+                        />
+                      </View>
+                      <Text style={[styles.bottomTabLabel, active && styles.bottomTabLabelActive]}>
+                        {tab.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
 
             {/* Floating navigation bar */}
             {/* <View style={styles.floatingNavContainer}>
@@ -830,6 +885,40 @@ function App() {
   const [routesFound, setRoutesFound] = useState([]);
   const [alertActive, setAlertActive] = useState(false);
   const [routeSelectionOpened, setRouteSelectionOpened] = useState(false);
+  const [recentSearches, setRecentSearches] = useState([
+    { from: 'Kashmere Gate', to: 'Huda City Centre' },
+    { from: 'Rajiv Chowk', to: 'Vaishali' },
+    { from: 'Dwarka Sector 21', to: 'Noida Electronic City' },
+  ]);
+  const [favourites, setFavourites] = useState([]);
+  const [recentStations, setRecentStations] = useState([]);
+  const [favouriteStations, setFavouriteStations] = useState([
+    'Kashmere Gate', 'Rajiv Chowk', 'Dwarka Sec 21',
+  ]);
+  const hydrated = useRef(false);
+
+  // Hydrate persisted state on launch
+  useEffect(() => {
+    (async () => {
+      const [rs, fav, rst, fst] = await Promise.all([
+        loadJSON(STORAGE_KEYS.recentSearches, null),
+        loadJSON(STORAGE_KEYS.favourites, null),
+        loadJSON(STORAGE_KEYS.recentStations, null),
+        loadJSON(STORAGE_KEYS.favouriteStations, null),
+      ]);
+      if (rs) setRecentSearches(rs);
+      if (fav) setFavourites(fav);
+      if (rst) setRecentStations(rst);
+      if (fst) setFavouriteStations(fst);
+      hydrated.current = true;
+    })();
+  }, []);
+
+  // Persist on change (after hydration)
+  useEffect(() => { if (hydrated.current) saveJSON(STORAGE_KEYS.recentSearches, recentSearches); }, [recentSearches]);
+  useEffect(() => { if (hydrated.current) saveJSON(STORAGE_KEYS.favourites, favourites); }, [favourites]);
+  useEffect(() => { if (hydrated.current) saveJSON(STORAGE_KEYS.recentStations, recentStations); }, [recentStations]);
+  useEffect(() => { if (hydrated.current) saveJSON(STORAGE_KEYS.favouriteStations, favouriteStations); }, [favouriteStations]);
 
   return (
     <ThemeProvider>
@@ -844,6 +933,14 @@ function App() {
         setAlertActive={setAlertActive}
         routeSelectionOpened={routeSelectionOpened}
         setRouteSelectionOpened={setRouteSelectionOpened}
+        recentSearches={recentSearches}
+        setRecentSearches={setRecentSearches}
+        favourites={favourites}
+        setFavourites={setFavourites}
+        recentStations={recentStations}
+        setRecentStations={setRecentStations}
+        favouriteStations={favouriteStations}
+        setFavouriteStations={setFavouriteStations}
       />
     </ThemeProvider>
   );
@@ -880,6 +977,41 @@ const styles = StyleSheet.create({
     textShadowOffset: {width: 1, height: 1},
     textShadowRadius: 2,
   },
+  // Bottom tab bar
+  bottomTabContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+    paddingTop: 8,
+  },
+  bottomTabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  bottomTab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  bottomTabIconWrap: {
+    width: 40,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomTabIconWrapActive: { backgroundColor: '#FDECEC' },
+  bottomTabLabel: { fontSize: 11, color: '#9A9A9A', fontWeight: '500', marginTop: 3 },
+  bottomTabLabelActive: { color: '#E5252B', fontWeight: '700' },
   // Floating navigation bar styles
   floatingNavContainer: {
     position: 'absolute',
