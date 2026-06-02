@@ -2,7 +2,10 @@ export const lightTheme = {
   background: '#FFFFFF',
   text: '#000000',
   softBackground: '#FFFFFF',
-  safeAreaBackground: '#E0E0E0',
+  // Matches the warm tint at the top/bottom of the home screen gradient so the
+  // notch / home-indicator insets blend with the screen instead of showing a
+  // grey band.
+  safeAreaBackground: '#FFF5F5',
   cardBackground: '#FFFFFF',
   accentColor: '#000000', // Changed to black
   borderColor: '#E0E0E0', // Grayscale

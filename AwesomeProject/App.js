@@ -1,6 +1,5 @@
 import React, {createContext, useState, useEffect, useRef} from 'react';
 import {
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
@@ -9,11 +8,9 @@ import {
   Platform,
   AppState,
   Alert,
-  PermissionsAndroid,
   Dimensions,
-  useColorScheme,
-  Image,
 } from 'react-native';
+import {SafeAreaProvider, useSafeAreaInsets, initialWindowMetrics} from 'react-native-safe-area-context';
 import {
   PERMISSIONS,
   RESULTS,
@@ -33,11 +30,8 @@ import './src/config/admob';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
 
-import AlertScreen from './components/AlertScreen';
-import ProfileScreen from './components/ProfileScreen';
 import {loadJSON, saveJSON, STORAGE_KEYS} from './src/utils/storage';
 import RouteMapScreen from './components/RouteMapScreen';
-import MapScreen from './components/MapScreen';
 import SearchRouteScreen from './components/SearchRoutes';
 // import stations from './components/stations';
 import SplashScreen from './components/SplashScreen';
@@ -103,6 +97,35 @@ const findNearestUpcomingStation = (currentLocation, routePath) => {
   }
 
   return nearestStationIndex;
+};
+
+// Among the stations still ahead on the route (index >= fromIndex), find the
+// one physically closest to the user. Used to resync progress when GPS drops
+// out: if signal was lost while the train passed several stations, the closest
+// station *ahead* is now further along the path, so we skip the missed ones
+// instead of waiting forever for a station that is already behind us.
+const findNearestStationIndexFrom = (currentLocation, routePath, fromIndex) => {
+  let minDistance = Infinity;
+  let nearestIndex = -1;
+
+  for (let i = Math.max(0, fromIndex); i < routePath.length; i++) {
+    const station = stations[routePath[i]];
+    if (!station) continue;
+
+    const distance = getDistanceFromLatLonInMeters(
+      currentLocation.coords.latitude,
+      currentLocation.coords.longitude,
+      station.coords.latitude,
+      station.coords.longitude,
+    );
+
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearestIndex = i;
+    }
+  }
+
+  return { nearestIndex, minDistance };
 };
 
 // Add this before the AppContent component
@@ -177,6 +200,7 @@ function AppContent({
   const [notificationMessage, setNotificationMessage] = useState('');
   const watchId = useRef(null);
   const appState = useRef(AppState.currentState);
+  const insets = useSafeAreaInsets();
   const {theme} = useTheme();
 
   // Handle splash screen timeout
@@ -564,6 +588,29 @@ const handleSetAlert = async (route) => {
           return;
         }
 
+        // Resync progress to the user's actual position. The station we should
+        // alert for is the closest one still *ahead* on the route. While we're
+        // simply approaching the next station, that closest-ahead station is
+        // exactly currentIdx + 1, so nothing changes. But if GPS dropped while
+        // the train passed one or more stations, the closest-ahead station is
+        // now further along the path - so we advance past the missed stations
+        // instead of waiting forever for one that is already behind us.
+        const { nearestIndex } = findNearestStationIndexFrom(
+          position, route.path, currentIdx + 1,
+        );
+        if (nearestIndex > currentIdx + 1) {
+          const skipped = nearestIndex - (currentIdx + 1);
+          console.log(
+            `Resyncing past ${skipped} missed station(s) (GPS gap): currentIdx ${currentIdx} -> ${nearestIndex - 1}`,
+          );
+          // currentIdx tracks the last station reached; the one we're now
+          // approaching is nearestIndex, so the last reached is the one before.
+          // (nearestIndex is at most the destination, so when we've skipped all
+          // the way there, the destination's own 400m arrival alert below still
+          // fires and ends tracking - no special-casing needed here.)
+          currentIdx = nearestIndex - 1;
+        }
+
         const nextStationId = route.path[currentIdx + 1];
         const nextStation = stations[nextStationId];
         const nextStationName = stationsFromKeys[nextStationId]
@@ -673,6 +720,9 @@ const handleSetAlert = async (route) => {
       );
       
       console.log('Location watching started with ID:', watchId.current);
+      // Reflect the active state in the UI right away (button -> "Alert Set",
+      // live-tracking bar slides up) instead of waiting for the first GPS fix.
+      setAlertActive(true);
       Alert.alert('Alert Set', 'You will be notified as you approach the next station.');
     },
     (error) => {
@@ -698,16 +748,10 @@ const handleSetAlert = async (route) => {
 
   const renderScreen = () => {
     switch (activeTab) {
-      case 'alert':
-        return <AlertScreen />;
       case 'search route':
         return <SearchRouteScreen />;
       case 'route':
         return <RouteMapScreen />;
-      case 'map':
-        return <MapScreen />;
-      case 'profile':
-        return <ProfileScreen />;
       default:
         return <SearchRouteScreen />;
     }
@@ -715,10 +759,7 @@ const handleSetAlert = async (route) => {
 
   const TABS = [
     { key: 'search route', label: 'Home', icon: 'home', iconOutline: 'home-outline' },
-    { key: 'route', label: 'Routes', icon: 'git-network', iconOutline: 'git-network-outline' },
-    { key: 'map', label: 'Map', icon: 'map', iconOutline: 'map-outline' },
-    { key: 'alert', label: 'Alerts', icon: 'notifications', iconOutline: 'notifications-outline' },
-    { key: 'profile', label: 'Profile', icon: 'person', iconOutline: 'person-outline' },
+    { key: 'route', label: 'Map', icon: 'map', iconOutline: 'map-outline' },
   ];
 
   return (
@@ -746,11 +787,11 @@ const handleSetAlert = async (route) => {
         favouriteStations,
         setFavouriteStations
       }}>
-      <SafeAreaView
-        style={[styles.safeArea, {backgroundColor: theme.safeAreaBackground}]}>
+      <View style={styles.safeArea}>
         <StatusBar
+          translucent
           barStyle={theme.statusBar.style}
-          backgroundColor={theme.statusBar.background}
+          backgroundColor="transparent"
         />
 
         {showSplash ? (
@@ -765,16 +806,21 @@ const handleSetAlert = async (route) => {
             
 
             
-            <AlertOverlay isActive={alertActive} onStopAlerts={handleStopAlerts} route={activeRoute} />
-
             <View
               style={[styles.content, {backgroundColor: theme.softBackground}]}>
               {renderScreen()}
             </View>
             {!adError && activeTab !== 'search route' && <></>}
 
+            <AlertOverlay
+              isActive={alertActive}
+              onStopAlerts={handleStopAlerts}
+              route={activeRoute}
+              onOpen={() => setActiveTab('route')}
+            />
+
             {/* Bottom Tab Bar */}
-            <View style={styles.bottomTabContainer}>
+            <View style={[styles.bottomTabContainer, {paddingBottom: Math.max(insets?.bottom ?? 0, 8)}]}>
               <View style={styles.bottomTabBar}>
                 {TABS.map(tab => {
                   const active = activeTab === tab.key;
@@ -782,18 +828,16 @@ const handleSetAlert = async (route) => {
                     <TouchableOpacity
                       key={tab.key}
                       style={styles.bottomTab}
-                      activeOpacity={0.7}
+                      activeOpacity={0.8}
                       onPress={() => setActiveTab(tab.key)}>
-                      <View style={[styles.bottomTabIconWrap, active && styles.bottomTabIconWrapActive]}>
+                      <View style={[styles.tabPill, active && styles.tabPillActive]}>
                         <Icon
                           name={active ? tab.icon : tab.iconOutline}
                           size={22}
                           color={active ? '#E5252B' : '#9A9A9A'}
                         />
+                        {active && <Text style={styles.tabPillLabel}>{tab.label}</Text>}
                       </View>
-                      <Text style={[styles.bottomTabLabel, active && styles.bottomTabLabelActive]}>
-                        {tab.label}
-                      </Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -873,7 +917,7 @@ const handleSetAlert = async (route) => {
             </View> */}
           </>
         )}
-      </SafeAreaView>
+      </View>
     </TabContext.Provider>
     </GestureHandlerRootView>
   );
@@ -886,14 +930,14 @@ function App() {
   const [alertActive, setAlertActive] = useState(false);
   const [routeSelectionOpened, setRouteSelectionOpened] = useState(false);
   const [recentSearches, setRecentSearches] = useState([
-    { from: 'Kashmere Gate', to: 'Huda City Centre' },
+    { from: 'Kashmere Gate', to: 'Millennium City Centre Gurugram' },
     { from: 'Rajiv Chowk', to: 'Vaishali' },
-    { from: 'Dwarka Sector 21', to: 'Noida Electronic City' },
+    { from: 'Dwarka Sector - 21', to: 'Noida Electronic City' },
   ]);
   const [favourites, setFavourites] = useState([]);
   const [recentStations, setRecentStations] = useState([]);
   const [favouriteStations, setFavouriteStations] = useState([
-    'Kashmere Gate', 'Rajiv Chowk', 'Dwarka Sec 21',
+    'Kashmere Gate', 'Rajiv Chowk', 'Dwarka Sector - 21',
   ]);
   const hydrated = useRef(false);
 
@@ -921,28 +965,30 @@ function App() {
   useEffect(() => { if (hydrated.current) saveJSON(STORAGE_KEYS.favouriteStations, favouriteStations); }, [favouriteStations]);
 
   return (
-    <ThemeProvider>
-      <AppContent
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        selectedRoute={selectedRoute}
-        setSelectedRoute={setSelectedRoute}
-        routesFound={routesFound}
-        setRoutesFound={setRoutesFound}
-        alertActive={alertActive}
-        setAlertActive={setAlertActive}
-        routeSelectionOpened={routeSelectionOpened}
-        setRouteSelectionOpened={setRouteSelectionOpened}
-        recentSearches={recentSearches}
-        setRecentSearches={setRecentSearches}
-        favourites={favourites}
-        setFavourites={setFavourites}
-        recentStations={recentStations}
-        setRecentStations={setRecentStations}
-        favouriteStations={favouriteStations}
-        setFavouriteStations={setFavouriteStations}
-      />
-    </ThemeProvider>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <ThemeProvider>
+        <AppContent
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          selectedRoute={selectedRoute}
+          setSelectedRoute={setSelectedRoute}
+          routesFound={routesFound}
+          setRoutesFound={setRoutesFound}
+          alertActive={alertActive}
+          setAlertActive={setAlertActive}
+          routeSelectionOpened={routeSelectionOpened}
+          setRouteSelectionOpened={setRouteSelectionOpened}
+          recentSearches={recentSearches}
+          setRecentSearches={setRecentSearches}
+          favourites={favourites}
+          setFavourites={setFavourites}
+          recentStations={recentStations}
+          setRecentStations={setRecentStations}
+          favouriteStations={favouriteStations}
+          setFavouriteStations={setFavouriteStations}
+        />
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
 
@@ -977,14 +1023,13 @@ const styles = StyleSheet.create({
     textShadowOffset: {width: 1, height: 1},
     textShadowRadius: 2,
   },
-  // Bottom tab bar
+  // Bottom tab bar — paddingBottom is applied dynamically via useSafeAreaInsets
   bottomTabContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     paddingHorizontal: 16,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
     paddingTop: 8,
   },
   bottomTabBar: {
@@ -1002,16 +1047,16 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   bottomTab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  bottomTabIconWrap: {
-    width: 40,
-    height: 32,
-    borderRadius: 16,
+  tabPill: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    height: 44,
+    borderRadius: 22,
+    paddingHorizontal: 16,
   },
-  bottomTabIconWrapActive: { backgroundColor: '#FDECEC' },
-  bottomTabLabel: { fontSize: 11, color: '#9A9A9A', fontWeight: '500', marginTop: 3 },
-  bottomTabLabelActive: { color: '#E5252B', fontWeight: '700' },
+  tabPillActive: { backgroundColor: '#FDECEC' },
+  tabPillLabel: { fontSize: 14, color: '#E5252B', fontWeight: '700', marginLeft: 8 },
   // Floating navigation bar styles
   floatingNavContainer: {
     position: 'absolute',

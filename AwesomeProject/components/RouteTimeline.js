@@ -3,17 +3,17 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  StatusBar,
   Share,
   Platform,
 } from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import stationsFromKeys from './stationsFromKeys';
 import {computeRouteMetrics, buildSegments, getLineInfo, lightenHex, formatClock} from '../utilities/routeMetrics';
+import {AdBanner} from '../src/components/AdBanner';
 
 const RED = '#E5252B';
 const WALK_MIN = 2;
@@ -25,6 +25,7 @@ const LinePill = ({lineInfo, small}) => (
 );
 
 const RouteTimeline = ({item, onClose, isFav, onToggleFav}) => {
+  const insets = useSafeAreaInsets();
   const startDate = useMemo(() => new Date(), []);
   const metrics = useMemo(() => computeRouteMetrics(item, startDate), [item, startDate]);
   const segments = useMemo(() => buildSegments(item, startDate), [item, startDate]);
@@ -86,10 +87,7 @@ const RouteTimeline = ({item, onClose, isFav, onToggleFav}) => {
         <View style={styles.contentCol}>
           {isOrigin && (
             <>
-              <View style={styles.nameRow}>
-                <Text style={styles.majorName}>{stationsFromKeys[id]}</Text>
-                <View style={styles.liveBadge}><View style={styles.liveDot} /><Text style={styles.liveText}>LIVE</Text></View>
-              </View>
+              <Text style={styles.majorName}>{stationsFromKeys[id]}</Text>
               <Text style={styles.subMeta}>{`Platform ${segments[0].boardPlatform}  •  Towards ${segments[0].towards}`}</Text>
               <View style={styles.pillRow}><LinePill lineInfo={segments[0].lineInfo} /></View>
             </>
@@ -115,10 +113,7 @@ const RouteTimeline = ({item, onClose, isFav, onToggleFav}) => {
 
           {isDest && (
             <>
-              <View style={styles.nameRow}>
-                <Text style={styles.majorName}>{stationsFromKeys[id]}</Text>
-                <View style={[styles.liveBadge, styles.goodBadge]}><View style={[styles.liveDot, {backgroundColor: '#1B9E1B'}]} /><Text style={[styles.liveText, {color: '#1B9E1B'}]}>LIVE</Text></View>
-              </View>
+              <Text style={styles.majorName}>{stationsFromKeys[id]}</Text>
               <Text style={styles.subMeta}>{`Platform ${segments[segments.length - 1].boardPlatform}`}</Text>
             </>
           )}
@@ -142,8 +137,7 @@ const RouteTimeline = ({item, onClose, isFav, onToggleFav}) => {
 
   return (
     <LinearGradient colors={['#FAFAFA', '#FFFFFF', '#FAFAFA']} style={styles.gradient}>
-      <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="dark-content" />
+      <View style={[styles.safe, {paddingTop: insets?.top ?? 0, paddingBottom: insets?.bottom ?? 0}]}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.circleBtn} onPress={onClose}>
@@ -203,8 +197,11 @@ const RouteTimeline = ({item, onClose, isFav, onToggleFav}) => {
               </View>
             </View>
           </View>
+
+          {/* Banner ad at the end of the timeline content. */}
+          <AdBanner />
         </ScrollView>
-      </SafeAreaView>
+      </View>
     </LinearGradient>
   );
 };
@@ -248,7 +245,7 @@ const styles = StyleSheet.create({
   stat: {flex: 1, alignItems: 'center'},
   statSep: {width: 1, height: 40, backgroundColor: '#F0F0F0'},
   statIcon: {width: 36, height: 36, borderRadius: 10, backgroundColor: '#FDECEC', alignItems: 'center', justifyContent: 'center', marginBottom: 6},
-  statValue: {fontSize: 16, fontWeight: '800', color: '#1A1A1A'},
+  statValue: {fontSize: 16, fontWeight: '700', color: '#1A1A1A'},
   statLabel: {fontSize: 11, color: '#9A9A9A', marginTop: 2},
 
   timelineCard: {
@@ -265,17 +262,12 @@ const styles = StyleSheet.create({
   interDot: {width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginTop: 2},
   smallDot: {width: 11, height: 11, borderRadius: 6, marginTop: 6},
   contentCol: {flex: 1, paddingLeft: 12, paddingBottom: 18},
-  nameRow: {flexDirection: 'row', alignItems: 'center'},
-  majorName: {fontSize: 18, fontWeight: '800', color: '#1A1A1A'},
+  majorName: {fontSize: 18, fontWeight: '700', color: '#1A1A1A'},
   minorName: {fontSize: 16, color: '#333', fontWeight: '500', paddingTop: 2},
   subMeta: {fontSize: 13, color: '#9A9A9A', marginTop: 4},
   pillRow: {flexDirection: 'row', marginTop: 8},
   linePill: {alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4},
   linePillText: {fontSize: 13, fontWeight: '700'},
-  liveBadge: {flexDirection: 'row', alignItems: 'center', backgroundColor: RED, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, marginLeft: 10},
-  goodBadge: {backgroundColor: '#E3F6E8'},
-  liveDot: {width: 5, height: 5, borderRadius: 3, backgroundColor: '#fff', marginRight: 4},
-  liveText: {color: '#fff', fontSize: 10, fontWeight: '800'},
   interBox: {backgroundColor: '#F7F7F7', borderRadius: 14, padding: 12, marginTop: 10},
   interBoxTop: {flexDirection: 'row', alignItems: 'center'},
   interBoxDot: {marginHorizontal: 8, color: '#BBB'},

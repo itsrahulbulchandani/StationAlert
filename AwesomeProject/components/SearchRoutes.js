@@ -3,18 +3,14 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   Alert,
-  StatusBar,
   TouchableOpacity,
   Modal,
-  TextInput,
-  FlatList,
   Dimensions,
-  Image,
   ScrollView,
-  Platform,
+  Image,
 } from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {metroStation} from './metroRoutes';
 import {colorLines, colorLinesWithIds, graph, graphWithIds} from './graph';
 import {TabContext} from '../App';
@@ -34,8 +30,22 @@ const RED = '#E5252B';
 const RED_SOFT = '#FDECEC';
 const DOT_PALETTE = ['#E5252B', '#2C7BE5', '#34A853', '#F5B400', '#9C27B0', '#00897B'];
 
+// Resolve a station name to its graph id, tolerant of legacy/format drift in
+// saved favourites & recent searches (e.g. "Dwarka Sec 21" vs the canonical
+// "Dwarka Sector - 21"). Without this, a stale name yields an undefined id and
+// the route finder silently returns no results.
+const normalizeStationName = name =>
+  String(name).toLowerCase().replace(/sector/g, 'sec').replace(/[^a-z0-9]/g, '');
+const normalizedStationIndex = Object.keys(stationsInverted).reduce((acc, name) => {
+  acc[normalizeStationName(name)] = stationsInverted[name];
+  return acc;
+}, {});
+const resolveStationId = name =>
+  stationsInverted[name] ?? normalizedStationIndex[normalizeStationName(name)];
+
 const SearchRoutesScreen = () => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const [allStations] = useState(metroStation);
   const [fromStation, setFromStation] = useState('');
   const [toStation, setToStation] = useState('');
@@ -128,8 +138,8 @@ const SearchRoutesScreen = () => {
       ].slice(0, 10));
     }
 
-    const fromStationId = stationsInverted[from];
-    const toStationId = stationsInverted[to];
+    const fromStationId = resolveStationId(from);
+    const toStationId = resolveStationId(to);
 
     const routes2 = findAllRoutes2(
       graphWithIds,
@@ -209,8 +219,7 @@ const SearchRoutesScreen = () => {
   const quickActions = [
     { icon: 'time-outline', label: 'Recent\nSearches', onPress: () => scrollRef.current?.scrollToEnd({ animated: true }) },
     { icon: 'heart', label: 'Favourite\nRoutes', onPress: () => setShowFavModal(true) },
-    { icon: 'notifications', label: 'Live\nAlerts', onPress: () => setActiveTab('alert') },
-    { icon: 'map', label: 'Metro\nMap', onPress: () => setActiveTab('map') },
+    { icon: 'map', label: 'Metro\nMap', onPress: () => setActiveTab('route') },
   ];
 
   return (
@@ -220,8 +229,7 @@ const SearchRoutesScreen = () => {
       start={{x: 0, y: 0}}
       end={{x: 0, y: 1}}
     >
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="dark-content" />
+      <View style={[styles.safeArea, {paddingTop: insets?.top ?? 0}]}>
         <ScrollView
           ref={scrollRef}
           style={styles.container}
@@ -230,19 +238,19 @@ const SearchRoutesScreen = () => {
 
           {/* Header */}
           <View style={styles.header}>
+            <View style={styles.headerArt} pointerEvents="none">
+              <View style={styles.headerGlow} />
+              <Image
+                source={require('../assets/Header.png')}
+                style={styles.headerImage}
+                resizeMode="contain"
+              />
+            </View>
             <View style={styles.headerTextWrap}>
               <Text style={styles.greeting}>{`${greeting} ${greetEmoji}`}</Text>
               <Text style={styles.title}>Find Train</Text>
               <Text style={[styles.title, styles.titleRed]}>Routes</Text>
               <Text style={styles.subtitle}>Delhi Metro Route Planner</Text>
-            </View>
-            <View style={styles.trainArt}>
-              <View style={styles.trainGlow} />
-              <View style={styles.liveBadge}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveText}>LIVE</Text>
-              </View>
-              <Ionicons name="train" size={64} color={RED} />
             </View>
           </View>
 
@@ -257,11 +265,12 @@ const SearchRoutesScreen = () => {
               </View>
               <View style={styles.stationTextWrap}>
                 <Text style={styles.stationLabel}>From Station</Text>
-                <Text style={[styles.stationValue, !fromStation && styles.stationPlaceholder]}>
+                <Text
+                  numberOfLines={1}
+                  style={[styles.stationValue, !fromStation && styles.stationPlaceholder]}>
                   {fromStation || 'Select From Station'}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#C4C4C4" />
             </TouchableOpacity>
 
             <View style={styles.dividerWrap}>
@@ -280,11 +289,12 @@ const SearchRoutesScreen = () => {
               </View>
               <View style={styles.stationTextWrap}>
                 <Text style={styles.stationLabel}>To Station</Text>
-                <Text style={[styles.stationValue, !toStation && styles.stationPlaceholder]}>
+                <Text
+                  numberOfLines={1}
+                  style={[styles.stationValue, !toStation && styles.stationPlaceholder]}>
                   {toStation || 'Select To Station'}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#C4C4C4" />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -417,7 +427,7 @@ const SearchRoutesScreen = () => {
         <Modal visible={routeSelectionOpened} animationType="slide" transparent={true}>
           <RouteSelection onClose={() => setRouteSelectionOpened(false)} />
         </Modal>
-      </SafeAreaView>
+      </View>
     </LinearGradient>
   );
 };
@@ -430,45 +440,38 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingTop: 8,
-    marginBottom: 8,
+    position: 'relative',
+    paddingTop: 16,
+    marginBottom: 4,
+    minHeight: 210,
   },
-  headerTextWrap: { flex: 1 },
+  headerArt: {
+    position: 'absolute',
+    top: 4,
+    right: -28,
+    width: width * 0.7,
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerGlow: {
+    position: 'absolute',
+    top: 8,
+    right: 0,
+    width: 210,
+    height: 210,
+    borderRadius: 105,
+    backgroundColor: 'rgba(229,37,43,0.05)',
+  },
+  headerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  headerTextWrap: { paddingTop: 25 },
   greeting: { fontSize: 15, fontWeight: '500', color: '#8A8A8A', marginBottom: 4 },
   title: { fontSize: 40, fontWeight: '800', color: '#1A1A1A', lineHeight: 46, letterSpacing: -0.5 },
   titleRed: { color: RED },
-  subtitle: { fontSize: 14, color: '#9A9A9A', marginTop: 6, fontWeight: '500' },
-  trainArt: {
-    width: 120,
-    height: 120,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 28,
-  },
-  trainGlow: {
-    position: 'absolute',
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: 'rgba(229,37,43,0.08)',
-  },
-  liveBadge: {
-    position: 'absolute',
-    top: 6,
-    right: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: RED,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  liveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#fff', marginRight: 4 },
-  liveText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
-
+  subtitle: { fontSize: 14, color: '#9A9A9A', marginTop: 10, fontWeight: '500' },
   // Search card
   searchCard: {
     backgroundColor: '#fff',
@@ -481,7 +484,7 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 6,
   },
-  stationRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
+  stationRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingRight: 56 },
   iconBox: {
     width: 48,
     height: 48,
@@ -499,7 +502,8 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: '#F0F0F0', marginLeft: 62 },
   swapButton: {
     position: 'absolute',
-    alignSelf: 'center',
+    right: 8,
+    top: -21,
     width: 44,
     height: 44,
     borderRadius: 22,
