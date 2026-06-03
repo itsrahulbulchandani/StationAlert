@@ -1,9 +1,3 @@
-import {
-  GestureHandlerRootView,
-  PanGestureHandler,
-  PinchGestureHandler,
-  State,
-} from 'react-native-gesture-handler';
 import React, {useState, useRef, useEffect, useContext, useMemo} from 'react';
 import {
   StyleSheet,
@@ -16,7 +10,8 @@ import {
   Modal,
 } from 'react-native';
 import RNFS from 'react-native-fs';
-import MapView, {Marker, Polyline, Callout} from 'react-native-maps';
+import JourneyMap from './JourneyMap';
+import LiveJourney, {JourneyViewToggle} from './LiveJourney';
 import {
   findAllRoutes2,
   findRoutesWithTransfers,
@@ -24,7 +19,7 @@ import {
 import { TabContext } from '../App';
 import Geolocation from '@react-native-community/geolocation';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { SafeAreaView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import stationsFromKeys from './stationsFromKeys';
 import { computeRouteMetrics, getLineInfo, lightenHex } from '../utilities/routeMetrics';
 
@@ -84,18 +79,19 @@ const RouteMapScreen = () => {
   const [currentZoom, setCurrentZoom] = useState(10);
   const { selectedRoute=[], setSelectedRoute, alertActive, currentCoordinates, setActiveTab, setRoutesFound, setRouteSelectionOpened } = useContext(TabContext);
   const [currentLocation, setCurrentLocation] = useState(null);
-  const [viewMode, setViewMode] = useState('route'); // 'route' | 'all'
+  // Only default to the Route view when a route actually exists; otherwise the
+  // (disabled) Route segment would look pre-selected with nothing to show.
+  const [viewMode, setViewMode] = useState(
+    () => (selectedRoute?.path?.length ? 'route' : 'all'),
+  ); // 'route' | 'all'
+  const [journeyView, setJourneyView] = useState('map'); // 'map' | 'line'
   const [showLegend, setShowLegend] = useState(false);
   const [hiddenLines, setHiddenLines] = useState([]); // line color hexes hidden on map
   const mapRef = useRef(null);
+  const insets = useSafeAreaInsets();
   const hasRequestedLocation = useRef(false);
   const hasAnimatedToRoute = useRef(false);
-  const [mapReady, setMapReady] = useState(false);
-  // Custom markers are snapshotted once, then frozen for performance. We flip
-  // this back on whenever the route or view mode changes so the native markers
-  // re-render fresh (otherwise react-native-maps can keep a stale snapshot and
-  // fall back to the default red pin).
-  const [tracksChanges, setTracksChanges] = useState(true);
+  const [mapReady, setMapReady] = useState(true);
   const [initialRegion, setInitialRegion] = useState({
     latitude: 28.6139,
     longitude: 77.209,
@@ -112,6 +108,11 @@ const RouteMapScreen = () => {
 
   const hasRoute = selectedRoute?.path && selectedRoute.path.length > 0;
   const showRoute = viewMode === 'route' && hasRoute;
+  // When a route appears/disappears, snap the segment to a valid state so the
+  // disabled "Route" tab is never left looking selected.
+  useEffect(() => {
+    setViewMode(hasRoute ? 'route' : 'all');
+  }, [hasRoute]);
   const hiddenSet = useMemo(
     () => new Set(hiddenLines.map(c => (c || '').toLowerCase())),
     [hiddenLines],
@@ -128,15 +129,6 @@ const RouteMapScreen = () => {
     [selectedRoute?.interChangeStations],
   );
 
-  // Re-snapshot custom markers whenever the route or view mode changes, then
-  // freeze them again shortly after. Keeps markers crisp without the constant
-  // re-render cost, and avoids the stale "red pin" fallback on mode switch.
-  useEffect(() => {
-    setTracksChanges(true);
-    const t = setTimeout(() => setTracksChanges(false), 700);
-    return () => clearTimeout(t);
-  }, [showRoute, selectedRoute?.path, hiddenSet, currentLocation]);
-
   // During an active alert, keep the journey pinned to the route view.
   useEffect(() => {
     if (alertActive) setViewMode('route');
@@ -150,14 +142,10 @@ const RouteMapScreen = () => {
         : [...prev, c]);
   };
 
-  const zoomBy = async delta => {
+  const zoomBy = delta => {
     if (!mapRef.current) return;
-    try {
-      const cam = await mapRef.current.getCamera();
-      if (cam.zoom != null) cam.zoom = Math.max(1, cam.zoom + delta);
-      if (cam.altitude != null) cam.altitude = delta > 0 ? cam.altitude / 2 : cam.altitude * 2;
-      mapRef.current.animateCamera(cam, { duration: 250 });
-    } catch (e) {}
+    if (delta > 0) mapRef.current.zoomIn();
+    else mapRef.current.zoomOut();
   };
 
   const recenter = () => {
@@ -170,7 +158,7 @@ const RouteMapScreen = () => {
         });
       }
     } else if (mapRef.current) {
-      mapRef.current.animateToRegion(initialRegion, 600);
+      mapRef.current.reset();
     }
   };
 
@@ -201,13 +189,12 @@ const RouteMapScreen = () => {
   // Function to parse shapes.txt file
   const parseShapesFile = async () => {
     try {
-      // Read the shapes.txt file
-      const filePath = Platform.select({
-        ios: `${RNFS.MainBundlePath}/shapes_with_colors.txt`,
-        android: 'asset:/shapes_with_colors.txt',
-      });
-      console.log('Attempting to read file from:', filePath);
-      const fileContent = await RNFS.readFile(filePath, 'utf8');
+      // Read the shapes file. On iOS it ships in the app bundle; on Android it
+      // lives in src/main/assets and must be read via readFileAssets (the
+      // ContentResolver used by readFile does not understand the asset: scheme).
+      const fileContent = await (Platform.OS === 'ios'
+        ? RNFS.readFile(`${RNFS.MainBundlePath}/shapes_with_colors.txt`, 'utf8')
+        : RNFS.readFileAssets('shapes_with_colors.txt', 'utf8'));
       console.log('File read successfully');
 
       // Parse the content
@@ -249,7 +236,6 @@ const RouteMapScreen = () => {
     } catch (error) {
       console.error('Error reading shapes file:', error);
       console.error('Error details:', error.message);
-      console.error('File path attempted:', filePath);
       setLoading(false);
     }
   };
@@ -284,10 +270,7 @@ const RouteMapScreen = () => {
       setCurrentLocation({ latitude, longitude });
       // Auto-follow the user's live position during active journey tracking.
       if (mapRef.current) {
-        mapRef.current.animateToRegion(
-          { latitude, longitude, latitudeDelta: 0.03, longitudeDelta: 0.03 },
-          800,
-        );
+        mapRef.current.centerOn({ latitude, longitude });
       }
     }
   }, [alertActive, currentCoordinates]);
@@ -307,8 +290,9 @@ const RouteMapScreen = () => {
 
   const parseStopsFile = async () => {
     try {
-      const filePath = RNFS.MainBundlePath + '/stops.txt';
-      const fileContent = await RNFS.readFile(filePath, 'utf8');
+      const fileContent = await (Platform.OS === 'ios'
+        ? RNFS.readFile(`${RNFS.MainBundlePath}/stops.txt`, 'utf8')
+        : RNFS.readFileAssets('stops.txt', 'utf8'));
 
       const lines = fileContent.split('\n');
       let stops = [];
@@ -339,96 +323,6 @@ const RouteMapScreen = () => {
       console.error('Error reading stops file:', error);
     }
   };
-
-  const CustomMarker = ({
-    color,
-    size = 2,
-    borderWidth = 1,
-    borderColor = '#FFFFFF',
-  }) => {
-    return (
-      <View
-        style={{
-          width: size,
-          height: size,
-          backgroundColor: color,
-          borderRadius: size / 2,
-          borderWidth: borderWidth,
-          borderColor: borderColor,
-          // Optional: add shadow
-          shadowColor: '#000',
-          shadowOffset: {
-            width: 0,
-            height: 1,
-          },
-          shadowOpacity: 0.22,
-          shadowRadius: 2.22,
-          elevation: 3,
-        }}
-      />
-    );
-  };
-
-  // Modern interchange station marker with name
-  const InterchangeMarker = ({ name, color }) => {
-    return (
-      <View style={{
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-        {!isMaxZoom && (
-          <Text style={{
-            color: '#1A1A1A',
-            backgroundColor: 'rgba(255,255,255,0.92)',
-            fontSize: 9,
-            fontWeight: '700',
-            paddingHorizontal: 5,
-            paddingVertical: 2,
-            borderRadius: 5,
-            textAlign: 'center',
-            marginBottom: 3,
-            maxWidth: 76,
-            overflow: 'hidden',
-          }}>
-            {name}
-          </Text>
-        )}
-        <View style={{
-          width: 12,
-          height: 12,
-          borderRadius: 6,
-          backgroundColor: '#fff',
-          borderWidth: 3,
-          borderColor: color,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.3,
-          shadowRadius: 2.5,
-          elevation: 4,
-        }} />
-      </View>
-    );
-  };
-
-  // --- Journey (selected route) markers -----------------------------------
-  // Small intermediate stop: coloured core inside a white casing.
-  const RouteDot = ({ color }) => (
-    <View style={styles.routeDotOuter}>
-      <View style={[styles.routeDotInner, { backgroundColor: color }]} />
-    </View>
-  );
-
-  // Interchange along the journey: hollow ring in the line colour.
-  const RouteInterchange = ({ color }) => (
-    <View style={[styles.routeInterchange, { borderColor: color }]} />
-  );
-
-  // Origin / destination: larger ringed pin with an A / B label.
-  const RouteEndpoint = ({ color, label }) => (
-    <View style={[styles.routeEndpoint, { borderColor: color }]}>
-      <Text style={[styles.routeEndpointText, { color }]}>{label}</Text>
-    </View>
-  );
 
   // console.log("Animated Custom Marker", shortestPath)
 
@@ -489,6 +383,37 @@ const RouteMapScreen = () => {
     }
   };
 
+  // Continuously follow the device location so the live "you are here" dot
+  // auto-updates while travelling (both the map dot and the Line view).
+  useEffect(() => {
+    let id = null;
+    let cancelled = false;
+    (async () => {
+      const ok = await requestLocationPermission();
+      if (!ok || cancelled) return;
+      id = Geolocation.watchPosition(
+        pos =>
+          setCurrentLocation({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          }),
+        () => {},
+        {
+          enableHighAccuracy: true,
+          distanceFilter: 10,
+          interval: 4000,
+          fastestInterval: 2000,
+          maximumAge: 1000,
+        },
+      );
+    })();
+    return () => {
+      cancelled = true;
+      if (id != null) Geolocation.clearWatch(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const tabContextRef = useRef();
 
   // Store the TabContext reference without causing re-renders
@@ -509,12 +434,7 @@ const RouteMapScreen = () => {
       setCurrentLocation(newLocation);
       
       if (mapRef.current) {
-        mapRef.current.animateToRegion({
-          latitude,
-          longitude,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02,
-        }, 1000);
+        mapRef.current.centerOn({ latitude, longitude });
       }
       return;
     }
@@ -534,12 +454,10 @@ const RouteMapScreen = () => {
             setCurrentLocation(newLocation);
             
             if (mapRef.current) {
-              mapRef.current.animateToRegion({
+              mapRef.current.centerOn({
                 latitude: newLocation.latitude,
                 longitude: newLocation.longitude,
-                latitudeDelta: 0.02,
-                longitudeDelta: 0.02,
-              }, 1000);
+              });
             }
           },
           error => {
@@ -591,184 +509,17 @@ const RouteMapScreen = () => {
 
   const TestMapScreen = () => {
     return (
-      <GestureHandlerRootView style={{flex: 1}}>
-        <PinchGestureHandler>
-          <PanGestureHandler>
-            <MapView
-              key={mapKey}
-              ref={mapRef}
-              style={{flex: 1}}
-              cameraZoomRange={CameraZoomRange}
-              initialRegion={initialRegion}
-              preserveClusterData={true}
-              moveOnMarkerPress={false}
-              // Faded / decluttered base map so the metro overlay stands out.
-              mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
-              customMapStyle={MINIMAL_MAP_STYLE}
-              showsPointsOfInterest={false}
-              showsBuildings={false}
-              showsTraffic={false}
-              showsIndoors={false}
-              // The native compass appears top-right (when the map rotates) and
-              // sits behind our layers/filter button. Hidden here; the recenter
-              // control already resets the view.
-              showsCompass={false}
-              onMapReady={() => {
-                console.log('Map is ready');
-                setMapReady(true);
-              }}
-            >
-              <>
-                {currentLocation && (
-                  <Marker
-                    coordinate={currentLocation}
-                    title="You are here"
-                    description="Your current location"
-                    anchor={{x: 0.5, y: 0.5}}
-                    zIndex={7}
-                    tracksViewChanges={tracksChanges}
-                  >
-                    <View style={styles.currentLocationMarker}>
-                      <View style={styles.currentLocationInner} />
-                    </View>
-                  </Marker>
-                )}
-                {/* Base network. Dimmed to a soft grey while a journey is shown
-                    so the highlighted route reads clearly on top. */}
-                {Object.entries(shapes).map(([shapeId, coordinates]) => {
-                  const col = (coordinates[0]?.shape_color || '').toLowerCase();
-                  if (hiddenSet.has(col)) return null;
-                  return (
-                    <Polyline
-                      key={shapeId}
-                      coordinates={coordinates}
-                      strokeColor={showRoute ? '#CDD2D9' : coordinates[0].shape_color}
-                      strokeWidth={showRoute ? 2 : 4.5}
-                      lineCap="round"
-                      lineJoin="round"
-                    />
-                  );
-                })}
-                {/* Highlighted journey: a white casing under each coloured
-                    segment gives the route a clean, metro-map look. */}
-                {showRoute && (() => {
-                  const path = selectedRoute.path;
-                  const colorPath = selectedRoute.colorPath || [];
-                  const segs = [];
-                  let cur = null;
-                  path.forEach((id, i) => {
-                    const st = memoizedStations.find(s => s.id == id);
-                    if (!st) return;
-                    const color = getLineInfo(colorPath[i]).color;
-                    if (!cur || cur.color !== color) {
-                      cur = { color, coords: [] };
-                      // connect segments visually
-                      if (segs.length) cur.coords.push(segs[segs.length - 1].coords.slice(-1)[0]);
-                      segs.push(cur);
-                    }
-                    cur.coords.push(st.coords);
-                  });
-                  return segs.flatMap((seg, i) => [
-                    <Polyline
-                      key={`rcase-${i}`}
-                      coordinates={seg.coords}
-                      strokeColor="#FFFFFF"
-                      strokeWidth={9}
-                      lineCap="round"
-                      lineJoin="round"
-                      zIndex={2}
-                    />,
-                    <Polyline
-                      key={`rseg-${i}`}
-                      coordinates={seg.coords}
-                      strokeColor={seg.color}
-                      strokeWidth={5.5}
-                      lineCap="round"
-                      lineJoin="round"
-                      zIndex={3}
-                    />,
-                  ]);
-                })()}
-                {showRoute ?
-                 (
-                  selectedRoute?.path?.map((marker, index) => {
-                    const stationFound = memoizedStations?.find(p => marker == p.id);
-                    if (!stationFound) return null;
-                    const segColor = getLineInfo(selectedRoute.colorPath?.[index]).color;
-                    const isOrigin = index === 0;
-                    const isDest = index === selectedRoute.path.length - 1;
-                    const isInterchange = routeInterchangeSet.has(marker);
-                    let child;
-                    if (isOrigin || isDest) {
-                      child = <RouteEndpoint color={segColor} label={isOrigin ? 'A' : 'B'} />;
-                    } else if (isInterchange) {
-                      child = <RouteInterchange color={segColor} />;
-                    } else {
-                      child = <RouteDot color={segColor} />;
-                    }
-                    return (
-                      <Marker
-                        key={`route-${stationFound.id}`}
-                        coordinate={stationFound.coords}
-                        title={stationFound.name}
-                        anchor={{x: 0.5, y: 0.5}}
-                        zIndex={isOrigin || isDest ? 6 : isInterchange ? 5 : 4}
-                        tracksViewChanges={tracksChanges}>
-                        <View pointerEvents="none">{child}</View>
-                      </Marker>
-                    );
-                  })
-                ) :
-                memoizedStations.map(marker => {
-                  if (hiddenSet.has((marker.color_code || '').toLowerCase())) return null;
-                  if (marker.interchange === "TRUE") {
-                    return (
-                      <Marker
-                        key={`all-${marker.id}`}
-                        coordinate={marker.coords}
-                        anchor={{x: 0.5, y: 0.5}}
-                        tracksViewChanges={tracksChanges}>
-                        <View pointerEvents="none">
-                          <InterchangeMarker
-                            name={marker.name}
-                            color={marker.color_code}
-                          />
-                        </View>
-                      </Marker>
-                    );
-                  }
-
-                  return (
-                    <Marker
-                      key={`all-${marker.id}`}
-                      coordinate={marker.coords}
-                      anchor={{x: 0.5, y: 0.5}}
-                      tracksViewChanges={tracksChanges}>
-                      <View pointerEvents="none">
-                        <CustomMarker
-                          color={marker.color_code}
-                          size={7}
-                          borderWidth={1.5}
-                        />
-                      </View>
-                      <Callout
-                        tooltip
-                        alphaHitTest
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          return false;
-                        }}>
-                        <SmallCallout text={marker.name} />
-                      </Callout>
-                    </Marker>
-                  );
-                })
-                }
-              </>
-            </MapView>
-          </PanGestureHandler>
-        </PinchGestureHandler>
-      </GestureHandlerRootView>
+      <JourneyMap
+        ref={mapRef}
+        shapes={shapes}
+        stations={memoizedStations}
+        selectedRoute={selectedRoute}
+        showRoute={showRoute}
+        hiddenSet={hiddenSet}
+        routeInterchangeSet={routeInterchangeSet}
+        currentLocation={currentLocation}
+        getLineInfo={getLineInfo}
+      />
     );
   };
 
@@ -784,7 +535,7 @@ const RouteMapScreen = () => {
   // Memoize the TestMapScreen component to prevent unnecessary re-renders
   const MapComponent = useMemo(() => {
     return TestMapScreen();
-  }, [shapes, memoizedStations, selectedRoute, isMaxZoom, currentLocation, showRoute, hiddenSet, tracksChanges, routeInterchangeSet]);
+  }, [shapes, memoizedStations, selectedRoute, isMaxZoom, currentLocation, showRoute, hiddenSet, routeInterchangeSet]);
 
   const handleBackPress = () => {
     setActiveTab('search route');
@@ -805,17 +556,36 @@ const RouteMapScreen = () => {
     setActiveTab('search route');
   };
 
+  // Line view: the timeline journey screen, fed the live location from the
+  // shared watcher above so the blue dot moves station-to-station.
+  if (journeyView === 'line' && hasRoute) {
+    return (
+      <LiveJourney
+        item={selectedRoute}
+        embedded
+        liveCoords={currentLocation}
+        alertActive={alertActive}
+        onChangeView={setJourneyView}
+        onClose={() => setJourneyView('map')}
+      />
+    );
+  }
+
   return (
     <View style={styles.root}>
       {stationsLoaded && !loading && showMarkers && MapComponent}
 
       {/* Top header */}
-      <SafeAreaView style={styles.topSafe} pointerEvents="box-none">
+      <View style={[styles.topSafe, {paddingTop: insets.top}]} pointerEvents="box-none">
         <View style={styles.headerBar} pointerEvents="box-none">
           <TouchableOpacity style={styles.circleBtn} onPress={handleBackPress} activeOpacity={0.7}>
             <Icon name="arrow-back" size={22} color="#1A1A1A" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Metro Map</Text>
+          {hasRoute ? (
+            <JourneyViewToggle value="map" onChange={setJourneyView} />
+          ) : (
+            <Text style={styles.headerTitle}>Metro Map</Text>
+          )}
           <TouchableOpacity style={styles.circleBtn} onPress={() => setShowLegend(true)} activeOpacity={0.7}>
             <Icon name="layers-outline" size={20} color="#1A1A1A" />
           </TouchableOpacity>
@@ -891,7 +661,7 @@ const RouteMapScreen = () => {
             </View>
           </View>
         )}
-      </SafeAreaView>
+      </View>
 
       {/* Right-side map controls */}
       <View style={styles.rightControls} pointerEvents="box-none">
@@ -916,7 +686,7 @@ const RouteMapScreen = () => {
           is being tracked — the view is pinned to the route and the live
           tracking bar sits in this area instead. */}
       {!alertActive && (
-      <SafeAreaView style={styles.segmentSafe} pointerEvents="box-none">
+      <View style={[styles.segmentSafe, {paddingBottom: insets.bottom}]} pointerEvents="box-none">
         <View style={styles.segmentBar}>
           <TouchableOpacity
             style={[styles.segment, viewMode === 'all' && styles.segmentActive, alertActive && styles.segmentDisabled]}
@@ -933,7 +703,7 @@ const RouteMapScreen = () => {
             <Text style={[styles.segmentText, viewMode === 'route' && styles.segmentTextActive, !hasRoute && {color: '#CCC'}]}>Route</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
       )}
 
       {/* Legend / line filter sheet (Modal so it renders above the tab bar) */}
@@ -974,31 +744,6 @@ const RouteMapScreen = () => {
     </View>
   );
 };
-
-const SmallCallout = ({ text }) => (
-  <View style={{
-    backgroundColor: 'white',
-    borderRadius: 3,
-    padding: 3,
-    width: 60,
-    borderWidth: 0.5,
-    borderColor: '#ccc',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1,
-    elevation: 2,
-  }}>
-    <Text style={{
-      fontSize: 9,
-      color: '#000',
-      textAlign: 'center',
-      fontWeight: '500',
-    }}>
-      {text}
-    </Text>
-  </View>
-);
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#EAEAEA' },

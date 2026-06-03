@@ -33,7 +33,7 @@ class VersionCheckService {
         currentVersion,
       });
 
-      if (needsUpdate.isNeeded) {
+      if (needsUpdate?.isNeeded) {
         Alert.alert(
           'Update Available',
           'A new version is available! Would you like to update?',
@@ -63,9 +63,9 @@ class VersionCheckService {
         );
       }
 
-      return needsUpdate.isNeeded;
+      return needsUpdate?.isNeeded ?? false;
     } catch (error) {
-      console.error('Error checking for updates:', error);
+      console.warn('Version check skipped:', error?.message || error);
       return false;
     }
   }

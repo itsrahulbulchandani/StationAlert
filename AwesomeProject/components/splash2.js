@@ -1,6 +1,5 @@
 import React, {createContext, useState, useEffect, useRef} from 'react';
 import {
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
@@ -11,6 +10,7 @@ import {
   Alert,
   PermissionsAndroid,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import PushNotificationIOS from '@react-native-community/push-notification-ios';
 import Geolocation from '@react-native-community/geolocation';

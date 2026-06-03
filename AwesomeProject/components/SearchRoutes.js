@@ -20,7 +20,6 @@ import RouteSelection from './RouteSelection';
 import stationsInverted from './stations_inverted';
 import { SquareAd } from '../src/components/SquareAd';
 import { AdBanner } from '../src/components/AdBanner';
-import { BlurView } from '@react-native-community/blur';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import StationPicker from './StationPicker';
@@ -423,8 +422,14 @@ const SearchRoutesScreen = () => {
           </View>
         </Modal>
 
-        {/* Route Selection Modal */}
-        <Modal visible={routeSelectionOpened} animationType="slide" transparent={true}>
+        {/* Route Selection Modal. statusBarTranslucent so the modal window
+            extends under the status bar — otherwise it sits below it AND
+            RouteSelection adds insets.top, double-padding the header. */}
+        <Modal
+          visible={routeSelectionOpened}
+          animationType="slide"
+          transparent={true}
+          statusBarTranslucent={true}>
           <RouteSelection onClose={() => setRouteSelectionOpened(false)} />
         </Modal>
       </View>

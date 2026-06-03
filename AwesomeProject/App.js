@@ -19,6 +19,8 @@ import {
   openSettings,
   checkMultiple,
   requestMultiple,
+  checkNotifications,
+  requestNotifications,
 } from 'react-native-permissions';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import PushNotificationIOS from '@react-native-community/push-notification-ios';
@@ -153,6 +155,30 @@ const initializePermissions = async () => {
     } catch (error) {
       console.error('Error initializing permissions:', error);
     }
+  } else {
+    // Android: runtime permissions default to "denied" at install, so the
+    // system popups never appear unless we request them. Ask for foreground
+    // location and notifications up front. Background location is NOT requested
+    // here — Android requires it as a separate, in-context request (handled
+    // when an alert is set), which is also what Play policy expects.
+    // NB: POST_NOTIFICATIONS is not a PERMISSIONS.ANDROID constant in
+    // react-native-permissions v5 — use the dedicated notifications helpers.
+    try {
+      const locStatus = await check(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION);
+      if (locStatus !== RESULTS.GRANTED) {
+        const locResult = await request(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION);
+        console.log('Android location request:', locResult);
+      }
+      if (Platform.Version >= 33) {
+        const {status} = await checkNotifications();
+        if (status !== RESULTS.GRANTED) {
+          const {status: notifResult} = await requestNotifications([]);
+          console.log('Android notification request:', notifResult);
+        }
+      }
+    } catch (error) {
+      console.error('Error initializing Android permissions:', error);
+    }
   }
 };
 
@@ -193,7 +219,7 @@ function AppContent({
   const [currentCoordinates, setCurrentCoordinates] = useState(null);
   const [location, setLocation] = useState(null);
   const [error, setError] = useState(null);
-  const [showSplash, setShowSplash] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
   const [adError, setAdError] = useState(false);
   const [activeRoute, setActiveRoute] = useState(null);
   const [showInAppNotification, setShowInAppNotification] = useState(false);
@@ -357,6 +383,15 @@ const checkNotificationPermissionStatus = async () => {
       // Try fallback to PushNotificationIOS only
     }
   }
+  // Android: POST_NOTIFICATIONS is not a PERMISSIONS.ANDROID constant in
+  // react-native-permissions v5; use the dedicated notifications helper.
+  try {
+    const {status} = await checkNotifications();
+    return status;
+  } catch (error) {
+    console.error('Error checking Android notification permission:', error);
+    return RESULTS.DENIED;
+  }
 };
 
 const getPermissionStatusText = (status) => {
@@ -377,53 +412,43 @@ const getPermissionStatusText = (status) => {
 };
 
 const showPermissionSettingsPrompt = (locationInfo, notificationStatus) => {
-  let message = '';
-  let needsLocationFix = false;
-  let needsNotificationFix = false;
+  // "Always" / "Allow all the time" is the OS wording for background location.
+  // It can only be enabled from system Settings (both iOS and Android 11+ do
+  // NOT allow it via an in-app popup), so we explain why and route there.
+  const alwaysLabel = Platform.OS === 'ios' ? '"Always"' : '"Allow all the time"';
 
-  // Check location issues
-  if (locationInfo.status === RESULTS.DENIED || locationInfo.status === RESULTS.BLOCKED) {
-    message += 'Location access is denied. ';
-    needsLocationFix = true;
-  } else if (locationInfo.status === RESULTS.GRANTED && !locationInfo.hasBackground) {
-    if (Platform.OS === 'ios') {
-      message += 'Location is set to "While Using App" but background alerts need "Always Allow". ';
-    } else {
-      message += 'Background location access is needed for alerts when app is closed. ';
-    }
-    needsLocationFix = true;
+  const needsLocationFix =
+    locationInfo.status !== RESULTS.GRANTED || !locationInfo.hasBackground;
+  const needsNotificationFix = notificationStatus !== RESULTS.GRANTED;
+
+  if (!needsLocationFix && !needsNotificationFix) {
+    return false;
   }
 
-  // Check notification issues
-  if (notificationStatus === RESULTS.DENIED || notificationStatus === RESULTS.BLOCKED) {
-    message += 'Notifications are disabled. ';
-    needsNotificationFix = true;
-  }
-
-  if (needsLocationFix || needsNotificationFix) {
-    message += '\nWould you like to open Settings to update these permissions?';
-
-    Alert.alert(
-      'Permission Settings Required',
-      message,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        },
-        {
-          text: 'Open Settings',
-          onPress: () => {
-            openSettings().catch(() => {
-              console.warn('Cannot open settings');
-            });
-          }
-        }
-      ]
+  const lines = [];
+  if (needsLocationFix) {
+    lines.push(
+      `📍  Location set to ${alwaysLabel}, so we can alert you as you near your station even when the app is in the background.`,
     );
-    return true;
   }
-  return false;
+  if (needsNotificationFix) {
+    lines.push('🔔  Notifications turned on, so the station alert can reach you.');
+  }
+
+  Alert.alert(
+    'Turn on station alerts',
+    `To notify you before your stop, "Next Stop" needs:\n\n${lines.join(
+      '\n\n',
+    )}\n\nOpen Settings to enable them?`,
+    [
+      {text: 'Not now', style: 'cancel'},
+      {
+        text: 'Open Settings',
+        onPress: () => openSettings().catch(() => console.warn('Cannot open settings')),
+      },
+    ],
+  );
+  return true;
 };
 
 const requestLocationPermission = async () => {
@@ -449,16 +474,23 @@ const requestLocationPermission = async () => {
 };
 
 const requestNotificationPermission = async () => {
-      return new Promise((resolve) => {
-      PushNotificationIOS.requestPermissions({
-        alert: true,
-        badge: true,
-        sound: true,
-      }, (granted) => {
-        console.log('iOS notification permission result:', granted);
-        resolve(granted.alert || granted.badge || granted.sound);
-      });
+  if (Platform.OS === 'android') {
+    // Android 13+ (API 33) requires a runtime notification grant; earlier
+    // versions grant it implicitly at install time.
+    if (Platform.Version < 33) return true;
+    const {status} = await requestNotifications([]);
+    return status === RESULTS.GRANTED;
+  }
+  return new Promise((resolve) => {
+    PushNotificationIOS.requestPermissions({
+      alert: true,
+      badge: true,
+      sound: true,
+    }, (granted) => {
+      console.log('iOS notification permission result:', granted);
+      resolve(granted.alert || granted.badge || granted.sound);
     });
+  });
 };
 
 const handleSetAlert = async (route) => {
@@ -490,7 +522,9 @@ const handleSetAlert = async (route) => {
   // If permissions were previously granted but not optimal, show settings prompt
   const hasPermissionIssues = (
     locationInfo.status === RESULTS.BLOCKED || locationInfo.status === RESULTS.DENIED ||
-    notificationStatus === RESULTS.BLOCKED || notificationStatus === RESULTS.DENIED ||
+    // Only a *blocked* notification permission needs the settings prompt; a
+    // plain DENIED (never asked) falls through and is requested below.
+    notificationStatus === RESULTS.BLOCKED ||
     (locationInfo.status === RESULTS.GRANTED && !locationInfo.hasBackground)
   );
 
@@ -510,9 +544,11 @@ const handleSetAlert = async (route) => {
     }
   }
 
-  if (notificationStatus !== RESULTS.GRANTED && Platform.OS === 'ios') {
+  if (notificationStatus !== RESULTS.GRANTED) {
     const hasNotificationPermission = await requestNotificationPermission();
-    if (!hasNotificationPermission) {
+    // iOS alerts are useless without notifications, so block. On Android the
+    // live in-app tracking still works, so proceed even if it's declined.
+    if (!hasNotificationPermission && Platform.OS === 'ios') {
       Alert.alert('Permission Required', 'Notification permission is required for alerts.');
       return;
     }

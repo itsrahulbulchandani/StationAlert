@@ -1,7 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Location: foreground for the live "you are here" dot + journey tracking;
+         background ("Allow all the time") so station alerts keep working when the
+         app isn't in the foreground. COARSE is required alongside FINE. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <!-- Notifications: POST_NOTIFICATIONS is required at runtime on Android 13+
+         to show the "approaching your station" alerts. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
       android:name=".MainApplication"
@@ -24,5 +34,14 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
       </activity>
+
+      <!-- AdMob App ID. Required by react-native-google-mobile-ads; without it the
+           app crashes on launch (MobileAdsInitProvider "Invalid application ID").
+           TODO: this is Google's public TEST App ID. Replace with the real Android
+           AdMob App ID (ca-app-pub-1713281088911988~XXXXXXXXXX) before any
+           production / Play Store build. -->
+      <meta-data
+        android:name="com.google.android.gms.ads.APPLICATION_ID"
+        android:value="ca-app-pub-3940256099942544~3347511713" />
     </application>
 </manifest>
