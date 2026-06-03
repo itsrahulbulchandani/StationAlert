@@ -23,6 +23,7 @@ import { AdBanner } from '../src/components/AdBanner';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import StationPicker from './StationPicker';
+import { useTutorial } from '../src/context/TutorialContext';
 const { width } = Dimensions.get('window');
 
 const RED = '#E5252B';
@@ -46,6 +47,17 @@ const SearchRoutesScreen = () => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const [allStations] = useState(metroStation);
+
+  const { registerRef } = useTutorial();
+  const fromStationRef = useRef(null);
+  const toStationRef = useRef(null);
+  const searchButtonRef = useRef(null);
+
+  useEffect(() => {
+    registerRef('fromStation', fromStationRef);
+    registerRef('toStation', toStationRef);
+    registerRef('searchButton', searchButtonRef);
+  }, []);
   const [fromStation, setFromStation] = useState('');
   const [toStation, setToStation] = useState('');
   const {
@@ -256,6 +268,7 @@ const SearchRoutesScreen = () => {
           {/* Search Card */}
           <View style={styles.searchCard}>
             <TouchableOpacity
+              ref={fromStationRef}
               style={styles.stationRow}
               activeOpacity={0.7}
               onPress={openFromModal}>
@@ -280,6 +293,7 @@ const SearchRoutesScreen = () => {
             </View>
 
             <TouchableOpacity
+              ref={toStationRef}
               style={styles.stationRow}
               activeOpacity={0.7}
               onPress={openToModal}>
@@ -297,6 +311,7 @@ const SearchRoutesScreen = () => {
             </TouchableOpacity>
 
             <TouchableOpacity
+              ref={searchButtonRef}
               style={styles.searchButton}
               activeOpacity={0.85}
               onPress={handleSearch}>

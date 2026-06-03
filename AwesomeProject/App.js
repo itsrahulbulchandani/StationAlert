@@ -42,6 +42,8 @@ import stations from './components/stationsWithIDs';
 import stationsInverted from './components/stations_inverted';
 import stationsFromKeys from './components/stationsFromKeys';
 import AlertOverlay from './components/AlertOverlay';
+import TutorialOverlay from './components/TutorialOverlay';
+import {TutorialProvider, useTutorial} from './src/context/TutorialContext';
 import InAppNotification from './src/components/InAppNotification';
 
 export const TabContext = createContext();
@@ -228,6 +230,8 @@ function AppContent({
   const appState = useRef(AppState.currentState);
   const insets = useSafeAreaInsets();
   const {theme} = useTheme();
+  const { registerRef, checkAndStartTutorial } = useTutorial();
+  const mapTabRef = useRef(null);
 
   // Handle splash screen timeout
   // useEffect(() => {
@@ -432,12 +436,12 @@ const showPermissionSettingsPrompt = (locationInfo, notificationStatus) => {
     );
   }
   if (needsNotificationFix) {
-    lines.push('🔔  Notifications turned on, so the station alert can reach you.');
+    lines.push('🔔  Notifications turned on, so Next Stop: Delhi Metro can reach you.');
   }
 
   Alert.alert(
-    'Turn on station alerts',
-    `To notify you before your stop, "Next Stop" needs:\n\n${lines.join(
+    'Turn on Next Stop: Delhi Metro alerts',
+    `To notify you before your stop, Next Stop: Delhi Metro needs:\n\n${lines.join(
       '\n\n',
     )}\n\nOpen Settings to enable them?`,
     [
@@ -655,7 +659,7 @@ const handleSetAlert = async (route) => {
           console.log('Next station not found:', nextStationName);
           PushNotificationIOS.presentLocalNotification({
             alertBody: `Next station not found:${nextStationName}`,
-            alertTitle: "Next Station Alert",
+            alertTitle: "Next Stop: Delhi Metro",
             soundName: 'default',
             category: 'STATION_ALERT',
             userInfo: {
@@ -695,7 +699,7 @@ const handleSetAlert = async (route) => {
               // Still show push notification
               PushNotificationIOS.presentLocalNotification({
                 alertBody: `You are approaching ${nextStationName}!`,
-                alertTitle: "Next Station Alert",
+                alertTitle: "Next Stop: Delhi Metro",
                 soundName: 'default',
                 category: 'STATION_ALERT',
                 userInfo: {
@@ -718,7 +722,7 @@ const handleSetAlert = async (route) => {
               setNotificationMessage(`You are approaching ${nextStationName}!`);
               setShowInAppNotification(true);
             } else {
-              Alert.alert('Next Station Alert', `You are approaching ${nextStationName}!`);
+              Alert.alert('Next Stop: Delhi Metro', `You are approaching ${nextStationName}!`);
             }
           }
           
@@ -831,7 +835,7 @@ const handleSetAlert = async (route) => {
         />
 
         {showSplash ? (
-          <SplashScreen onFinish={() => setShowSplash(false)} />
+          <SplashScreen onFinish={() => { setShowSplash(false); checkAndStartTutorial(); }} />
         ) : (
           <>
             <InAppNotification
@@ -860,9 +864,12 @@ const handleSetAlert = async (route) => {
               <View style={styles.bottomTabBar}>
                 {TABS.map(tab => {
                   const active = activeTab === tab.key;
+                  const tabRef = tab.key === 'route' ? mapTabRef : null;
+                  if (tabRef) registerRef('mapTab', tabRef);
                   return (
                     <TouchableOpacity
                       key={tab.key}
+                      ref={tabRef}
                       style={styles.bottomTab}
                       activeOpacity={0.8}
                       onPress={() => setActiveTab(tab.key)}>
@@ -953,6 +960,7 @@ const handleSetAlert = async (route) => {
             </View> */}
           </>
         )}
+        <TutorialOverlay />
       </View>
     </TabContext.Provider>
     </GestureHandlerRootView>
@@ -1003,6 +1011,7 @@ function App() {
   return (
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <ThemeProvider>
+        <TutorialProvider>
         <AppContent
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -1023,6 +1032,7 @@ function App() {
           favouriteStations={favouriteStations}
           setFavouriteStations={setFavouriteStations}
         />
+        </TutorialProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

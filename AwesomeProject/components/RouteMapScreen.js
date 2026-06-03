@@ -10,6 +10,7 @@ import {
   Modal,
 } from 'react-native';
 import RNFS from 'react-native-fs';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import JourneyMap from './JourneyMap';
 import LiveJourney, {JourneyViewToggle} from './LiveJourney';
 import {
@@ -22,6 +23,45 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import stationsFromKeys from './stationsFromKeys';
 import { computeRouteMetrics, getLineInfo, lightenHex } from '../utilities/routeMetrics';
+import SpotlightTutorial from './SpotlightTutorial';
+
+const JOURNEY_VIEW_TUTORIAL_STEPS = [
+  {
+    key: 'viewToggle',
+    title: 'Map View & Line View',
+    description: 'Tap "Map" to see your route on the live map, or "Line" for a station-by-station timeline with your live position highlighted.',
+    tooltipSide: 'below',
+    isLast: true,
+  },
+];
+
+const MAP_TUTORIAL_STEPS = [
+  {
+    key: null,
+    title: 'Metro Map',
+    description: 'Explore the full Delhi Metro network. When you have an active route, the map zooms in and tracks your journey live.',
+    icon: 'map-outline',
+  },
+  {
+    key: 'layersBtn',
+    title: 'Filter Metro Lines',
+    description: 'Tap here to show or hide individual metro lines, so you can focus on just the lines you need.',
+    tooltipSide: 'below',
+  },
+  {
+    key: 'locationBtn',
+    title: 'Map Controls',
+    description: 'Tap the locate button to jump to your current position. Use the recenter button to fit your route on screen, or zoom in and out.',
+    tooltipSide: 'below',
+  },
+  {
+    key: 'segmentBar',
+    title: 'All Lines vs Your Route',
+    description: "Switch between the full metro network and just your active route. The Route tab is enabled once you've searched for a journey.",
+    tooltipSide: 'above',
+    isLast: true,
+  },
+];
 
 const RED = '#E5252B';
 const METRO_LINES = [
@@ -89,6 +129,24 @@ const RouteMapScreen = () => {
   const [hiddenLines, setHiddenLines] = useState([]); // line color hexes hidden on map
   const mapRef = useRef(null);
   const insets = useSafeAreaInsets();
+  const layersBtnRef = useRef(null);
+  const locationBtnRef = useRef(null);
+  const segmentBarRef = useRef(null);
+  const mapTutorialRefs = {
+    layersBtn: layersBtnRef,
+    locationBtn: locationBtnRef,
+    segmentBar: segmentBarRef,
+  };
+
+  const viewToggleRef = useRef(null);
+  const journeyViewTutorialRefs = { viewToggle: viewToggleRef };
+
+  const [mapTutorialDone, setMapTutorialDone] = useState(false);
+  useEffect(() => {
+    AsyncStorage.getItem('tutorial_map_v1').then(val => {
+      if (val) setMapTutorialDone(true);
+    }).catch(() => {});
+  }, []);
   const hasRequestedLocation = useRef(false);
   const hasAnimatedToRoute = useRef(false);
   const [mapReady, setMapReady] = useState(true);
@@ -582,11 +640,13 @@ const RouteMapScreen = () => {
             <Icon name="arrow-back" size={22} color="#1A1A1A" />
           </TouchableOpacity>
           {hasRoute ? (
-            <JourneyViewToggle value="map" onChange={setJourneyView} />
+            <View ref={viewToggleRef} collapsable={false}>
+              <JourneyViewToggle value="map" onChange={setJourneyView} />
+            </View>
           ) : (
             <Text style={styles.headerTitle}>Metro Map</Text>
           )}
-          <TouchableOpacity style={styles.circleBtn} onPress={() => setShowLegend(true)} activeOpacity={0.7}>
+          <TouchableOpacity ref={layersBtnRef} style={styles.circleBtn} onPress={() => setShowLegend(true)} activeOpacity={0.7}>
             <Icon name="layers-outline" size={20} color="#1A1A1A" />
           </TouchableOpacity>
         </View>
@@ -665,7 +725,7 @@ const RouteMapScreen = () => {
 
       {/* Right-side map controls */}
       <View style={styles.rightControls} pointerEvents="box-none">
-        <TouchableOpacity style={styles.controlBtn} onPress={getCurrentLocation} activeOpacity={0.7}>
+        <TouchableOpacity ref={locationBtnRef} style={styles.controlBtn} onPress={getCurrentLocation} activeOpacity={0.7}>
           <Icon name="locate" size={22} color="#1A1A1A" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.controlBtn} onPress={recenter} activeOpacity={0.7}>
@@ -687,7 +747,7 @@ const RouteMapScreen = () => {
           tracking bar sits in this area instead. */}
       {!alertActive && (
       <View style={[styles.segmentSafe, {paddingBottom: insets.bottom}]} pointerEvents="box-none">
-        <View style={styles.segmentBar}>
+        <View ref={segmentBarRef} style={styles.segmentBar}>
           <TouchableOpacity
             style={[styles.segment, viewMode === 'all' && styles.segmentActive, alertActive && styles.segmentDisabled]}
             onPress={() => !alertActive && setViewMode('all')}
@@ -741,6 +801,19 @@ const RouteMapScreen = () => {
           </View>
         </View>
       </Modal>
+      <SpotlightTutorial
+        steps={MAP_TUTORIAL_STEPS}
+        stepRefs={mapTutorialRefs}
+        storageKey="tutorial_map_v1"
+        onDone={() => setMapTutorialDone(true)}
+      />
+      {hasRoute && mapTutorialDone && (
+        <SpotlightTutorial
+          steps={JOURNEY_VIEW_TUTORIAL_STEPS}
+          stepRefs={journeyViewTutorialRefs}
+          storageKey="tutorial_journey_view_v1"
+        />
+      )}
     </View>
   );
 };

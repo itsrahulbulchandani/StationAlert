@@ -1,4 +1,4 @@
-import React, {useState, useContext, useMemo} from 'react';
+import React, {useState, useContext, useMemo, useRef} from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   StyleSheet,
   ScrollView,
   Image,
+  Share,
+  Platform,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -17,6 +19,41 @@ import {findRouteOptions} from '../utilities/helper';
 import {computeRouteMetrics, buildSegments, getLineInfo, lightenHex} from '../utilities/routeMetrics';
 import RouteTimeline from './RouteTimeline';
 import {SquareAd} from '../src/components/SquareAd';
+import SpotlightTutorial from './SpotlightTutorial';
+
+const ROUTE_TUTORIAL_STEPS = [
+  {
+    key: null,
+    title: 'Route Details',
+    description: "Here's everything about your journey — stats, step-by-step directions, and actions to start or set an alert.",
+    icon: 'map-outline',
+  },
+  {
+    key: 'statsCard',
+    title: 'Journey at a Glance',
+    description: 'See the estimated travel time, number of interchanges, fare, and total stations for this route.',
+    tooltipSide: 'below',
+  },
+  {
+    key: 'timelineBtn',
+    title: 'Full Station List',
+    description: 'Tap Timeline to see every station on your journey with platform numbers and interchange points.',
+    tooltipSide: 'below',
+  },
+  {
+    key: 'alertBtn',
+    title: 'Set a Station Alert',
+    description: "Tap Set Alert before you board. Next Stop: Delhi Metro will notify you as you near the next station — no need to watch the map.",
+    tooltipSide: 'above',
+  },
+  {
+    key: 'startBtn',
+    title: 'Start Journey',
+    description: 'Tap here to open the live map and track your route in real time.',
+    tooltipSide: 'above',
+    isLast: true,
+  },
+];
 
 const RED = '#E5252B';
 
@@ -43,6 +80,17 @@ const RouteSelection = ({onClose}) => {
     (routesFound && routesFound[0]) || selectedRoute || null,
   );
   const [showTimeline, setShowTimeline] = useState(false);
+
+  const statsCardRef = useRef(null);
+  const timelineBtnRef = useRef(null);
+  const alertBtnRef = useRef(null);
+  const startBtnRef = useRef(null);
+  const tutorialRefs = {
+    statsCard: statsCardRef,
+    timelineBtn: timelineBtnRef,
+    alertBtn: alertBtnRef,
+    startBtn: startBtnRef,
+  };
 
   const metrics = useMemo(() => computeRouteMetrics(activeRoute), [activeRoute]);
   const segments = useMemo(() => (activeRoute ? buildSegments(activeRoute) : []), [activeRoute]);
@@ -110,6 +158,21 @@ const RouteSelection = ({onClose}) => {
         : [favKey, ...prev]);
   };
 
+  const onShare = async () => {
+    if (!metrics) return;
+    const lines = segments.map(s => s.lineInfo.name).join(' → ');
+    const msg =
+      `🚇 ${metrics.fromName} → ${metrics.toName}\n` +
+      `~${metrics.durationMin} min • ${metrics.interchanges} interchange • ₹${metrics.fare} • ${metrics.stationsCount} stations\n` +
+      `${lines}\n\nShared via Next Stop: Delhi Metro`;
+    try {
+      await Share.share(
+        { message: msg, title: `${metrics.fromName} → ${metrics.toName}` },
+        { dialogTitle: `Share route to ${metrics.toName}` },
+      );
+    } catch (_) {}
+  };
+
   const startJourney = () => {
     setSelectedRoute(activeRoute);
     setActiveTab('route');
@@ -143,9 +206,14 @@ const RouteSelection = ({onClose}) => {
             <Ionicons name="arrow-back" size={22} color="#1A1A1A" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Route Details</Text>
-          <TouchableOpacity style={styles.circleBtn} onPress={toggleFav}>
-            <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={RED} />
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.circleBtn} onPress={toggleFav}>
+              <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={RED} />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.circleBtn, {marginLeft: 8}]} onPress={onShare}>
+              <Ionicons name={Platform.OS === 'ios' ? 'share-outline' : 'share-social-outline'} size={20} color="#1A1A1A" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView contentContainerStyle={{paddingBottom: 40}} showsVerticalScrollIndicator={false}>
@@ -185,7 +253,7 @@ const RouteSelection = ({onClose}) => {
           </View>
 
           {/* Stats card */}
-          <View style={styles.statsCard}>
+          <View ref={statsCardRef} style={styles.statsCard}>
             <Stat icon="time-outline" value={`${metrics.durationMin} min`} label="Duration" />
             <Stat icon="git-network-outline" value={`${metrics.interchanges}`} label="Interchange" />
             <Stat icon="cash-outline" value={`₹${metrics.fare}`} label="Fare" />
@@ -199,7 +267,7 @@ const RouteSelection = ({onClose}) => {
                 <Ionicons name={routeBadge.icon} size={14} color={RED} />
                 <Text style={styles.fastestText}>{routeBadge.text}</Text>
               </View>
-              <TouchableOpacity style={styles.timelineBtn} onPress={() => setShowTimeline(true)} activeOpacity={0.8}>
+              <TouchableOpacity ref={timelineBtnRef} style={styles.timelineBtn} onPress={() => setShowTimeline(true)} activeOpacity={0.8}>
                 <Ionicons name="list" size={16} color={RED} />
                 <Text style={styles.timelineBtnText}>Timeline</Text>
               </TouchableOpacity>
@@ -268,6 +336,7 @@ const RouteSelection = ({onClose}) => {
           {/* Actions */}
           <View style={styles.actionRow}>
             <TouchableOpacity
+              ref={alertBtnRef}
               style={[styles.alertBtn, alertActive && styles.alertBtnActive]}
               onPress={() => !alertActive && handleSetAlert(activeRoute)}
               disabled={alertActive}>
@@ -280,7 +349,7 @@ const RouteSelection = ({onClose}) => {
                 {alertActive ? 'Alert Set' : 'Set Alert'}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.startBtn} onPress={startJourney}>
+            <TouchableOpacity ref={startBtnRef} style={styles.startBtn} onPress={startJourney}>
               <Ionicons name="navigate" size={20} color="#fff" />
               <Text style={styles.startBtnText}>Start Journey</Text>
             </TouchableOpacity>
@@ -323,6 +392,11 @@ const RouteSelection = ({onClose}) => {
             <Text style={styles.footnoteText}>Fares may vary. Please check at the time of travel.</Text>
           </View>
         </ScrollView>
+        <SpotlightTutorial
+          steps={ROUTE_TUTORIAL_STEPS}
+          stepRefs={tutorialRefs}
+          storageKey="tutorial_route_details_v1"
+        />
       </View>
     </LinearGradient>
   );
@@ -344,6 +418,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 10,
   },
   headerTitle: {fontSize: 22, fontWeight: '700', color: '#1A1A1A'},
+  headerRight: {flexDirection: 'row', alignItems: 'center'},
   circleBtn: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff',
     alignItems: 'center', justifyContent: 'center',

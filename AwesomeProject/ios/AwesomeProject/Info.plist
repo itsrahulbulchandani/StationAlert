@@ -44,9 +44,9 @@
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>We need your location to provide station alerts even when the app is in the background</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>Station Alert needs access to your location to provide alerts when you approach the next station.</string>
+	<string>Next Stop: Delhi Metro needs access to your location to provide alerts when you approach the next station.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Station Alert needs access to your location to provide alerts when you approach the next station.</string>
+	<string>Next Stop: Delhi Metro needs access to your location to provide alerts when you approach the next station.</string>
 	<key>NSNotificationsUsageDescription</key>
 	<string>This app needs notification access to alert you about upcoming stations.</string>
 	<key>NSUserNotificationsEnabled</key>

@@ -28,7 +28,7 @@ const PermissionFlowManager = ({ onPermissionsGranted, onPermissionsDenied }) =>
         <View style={styles.modalContainer}>
           <Text style={styles.modalTitle}>Stay Informed on Your Journey</Text>
           <Text style={styles.modalText}>
-            To provide you with timely station alerts, this app needs to:
+            To provide you with timely alerts, Next Stop: Delhi Metro needs to:
           </Text>
           <View style={styles.permissionList}>
             <Text style={styles.permissionItem}>📍 Access your location to know when you're near stations</Text>
@@ -134,7 +134,7 @@ const PermissionFlowManager = ({ onPermissionsGranted, onPermissionsDenied }) =>
         <View style={styles.modalContainer}>
           <Text style={styles.modalTitle}>Enable Notifications</Text>
           <Text style={styles.modalText}>
-            Finally, let's enable notifications so you receive station alerts.
+            Finally, let's enable notifications so Next Stop: Delhi Metro can alert you.
           </Text>
           <Text style={styles.modalSubtext}>
             You'll receive timely notifications when approaching your station, even with your phone in your pocket.
@@ -165,7 +165,7 @@ const PermissionFlowManager = ({ onPermissionsGranted, onPermissionsDenied }) =>
         <View style={styles.modalContainer}>
           <Text style={styles.modalTitle}>Permissions Needed</Text>
           <Text style={styles.modalText}>
-            Some permissions were denied. To use station alerts, please enable them in Settings:
+            Some permissions were denied. To use Next Stop: Delhi Metro, please enable them in Settings:
           </Text>
           <View style={styles.settingsInstructions}>
             {!permissionStatus.locationWhenInUse && (
@@ -206,7 +206,7 @@ const PermissionFlowManager = ({ onPermissionsGranted, onPermissionsDenied }) =>
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
           {
             title: 'Location Permission',
-            message: 'This app needs location access to provide station alerts.',
+            message: 'Next Stop: Delhi Metro needs location access to alert you before your stop.',
             buttonNeutral: 'Ask Me Later',
             buttonNegative: 'Cancel',
             buttonPositive: 'OK',
@@ -363,7 +363,7 @@ const PermissionFlowManager = ({ onPermissionsGranted, onPermissionsDenied }) =>
       
       {/* Trigger button - replace with your own trigger */}
       <TouchableOpacity style={styles.triggerButton} onPress={startPermissionFlow}>
-        <Text style={styles.triggerButtonText}>Setup Station Alerts</Text>
+        <Text style={styles.triggerButtonText}>Setup Next Stop: Delhi Metro</Text>
       </TouchableOpacity>
     </View>
   );

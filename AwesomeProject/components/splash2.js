@@ -122,7 +122,7 @@ function App() {
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
         {
           title: 'Location Permission',
-          message: 'Station Alert needs access to your location to provide alerts.',
+          message: 'Next Stop: Delhi Metro needs access to your location to provide alerts.',
           buttonNeutral: 'Ask Me Later',
           buttonNegative: 'Cancel',
           buttonPositive: 'OK',
@@ -243,7 +243,7 @@ function App() {
         console.log('Next station not found:', nextStationName);
         PushNotificationIOS.presentLocalNotification({
           alertBody: `Next station not found:${nextStationName}`,
-          alertTitle: "Next Station Alert",
+          alertTitle: "Next Stop: Delhi Metro",
           soundName: 'default',
           category: 'STATION_ALERT',
           userInfo: {
@@ -277,7 +277,7 @@ function App() {
             console.log('Attempting to send iOS notification...');
             PushNotificationIOS.presentLocalNotification({
               alertBody: `You are approaching ${nextStationName}!`,
-              alertTitle: "Next Station Alert",
+              alertTitle: "Next Stop: Delhi Metro",
               soundName: 'default',
               category: 'STATION_ALERT',
               userInfo: {
@@ -292,7 +292,7 @@ function App() {
             console.error('Error sending iOS notification:', error);
           }
         } else {
-          Alert.alert('Next Station Alert', `You are approaching ${nextStationName}!`);
+          Alert.alert('Next Stop: Delhi Metro', `You are approaching ${nextStationName}!`);
         }
         
         currentIdx++;
@@ -361,7 +361,7 @@ function App() {
         ) : (
           <SafeAreaView style={styles.safeArea}>
             <View style={styles.header}>
-              <Text style={styles.headerTitle}>Station Alert</Text>
+              <Text style={styles.headerTitle}>Next Stop: Delhi Metro</Text>
             </View>
             
             <View style={styles.tabContainer}>

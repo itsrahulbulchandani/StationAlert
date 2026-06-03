@@ -37,14 +37,18 @@ const RouteTimeline = ({item, onClose, isFav, onToggleFav}) => {
   const interSet = new Set(item.interChangeStations || []);
   const lastIdx = path.length - 1;
 
-  const onShare = () => {
+  const onShare = async () => {
     const lines = segments.map(s => s.lineInfo.name).join(' → ');
-    Share.share({
-      message:
-        `🚇 ${metrics.fromName} → ${metrics.toName}\n` +
-        `${metrics.startTime} – ${metrics.arrivalTime} (${metrics.durationMin} min)\n` +
-        `${lines}\n${metrics.interchanges} interchange • ₹${metrics.fare} • ${metrics.stationsCount} stations`,
-    }).catch(() => {});
+    const msg =
+      `🚇 ${metrics.fromName} → ${metrics.toName}\n` +
+      `${metrics.startTime} – ${metrics.arrivalTime} (${metrics.durationMin} min)\n` +
+      `${lines}\n${metrics.interchanges} interchange • ₹${metrics.fare} • ${metrics.stationsCount} stations\n\nShared via Next Stop: Delhi Metro`;
+    try {
+      await Share.share(
+        { message: msg, title: `${metrics.fromName} → ${metrics.toName}` },
+        { dialogTitle: `Share route to ${metrics.toName}` },
+      );
+    } catch (_) {}
   };
 
   // Which line colour to draw on the connector BELOW station i (the next hop).
