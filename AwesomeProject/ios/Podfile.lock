@@ -1353,8 +1353,6 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-splash-screen (3.3.0):
-    - React-Core
   - react-native-tracking-transparency (0.1.2):
     - React
   - react-native-vector-icons-ionicons (12.3.0)
@@ -1989,7 +1987,6 @@ DEPENDENCIES:
   - "react-native-geolocation (from `../node_modules/@react-native-community/geolocation`)"
   - react-native-maps (from `../node_modules/react-native-maps`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
-  - react-native-splash-screen (from `../node_modules/react-native-splash-screen`)
   - react-native-tracking-transparency (from `../node_modules/react-native-tracking-transparency`)
   - "react-native-vector-icons-ionicons (from `../node_modules/@react-native-vector-icons/ionicons`)"
   - react-native-version-check (from `../node_modules/react-native-version-check`)
@@ -2125,8 +2122,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-maps"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
-  react-native-splash-screen:
-    :path: "../node_modules/react-native-splash-screen"
   react-native-tracking-transparency:
     :path: "../node_modules/react-native-tracking-transparency"
   react-native-vector-icons-ionicons:
@@ -2257,7 +2252,6 @@ SPEC CHECKSUMS:
   react-native-geolocation: 70b8819c3a45a4613e58c2b13ba694ec1f7de3d2
   react-native-maps: ee1e65647460c3d41e778071be5eda10e3da6225
   react-native-safe-area-context: 52c0663a0c3b1304f9110a7e5dc40e82d092f2bd
-  react-native-splash-screen: 4312f786b13a81b5169ef346d76d33bc0c6dc457
   react-native-tracking-transparency: 25ff1ff866e338c137c818bdec20526bb05ffcc1
   react-native-vector-icons-ionicons: ad07e944a092a5cf71b8b569d8f5ce2bf674c415
   react-native-version-check: 54a471d70dadf0f72fc142e70f16e4bf473a91a5
