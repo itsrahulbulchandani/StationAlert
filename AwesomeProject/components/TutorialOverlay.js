@@ -98,15 +98,18 @@ const TutorialOverlay = () => {
     }).start();
 
     if (step?.key) {
+      // Clear the previous step's rect immediately so it is never drawn for
+      // this step while we wait for the new measurement.
+      setTargetRect(null);
       // Short delay so layout settles after a tab switch or first render
       const timer = setTimeout(() => {
         const ref = getRef(step.key);
         if (ref?.current) {
           ref.current.measure((_x, _y, w, h, pageX, pageY) => {
-            setTargetRect({ x: pageX, y: pageY, w, h });
+            setTargetRect({ step: tutorialStep, x: pageX, y: pageY, w, h });
           });
         } else {
-          setTargetRect(null);
+          setTargetRect({ step: tutorialStep, missing: true });
         }
       }, 120);
       return () => clearTimeout(timer);
@@ -148,8 +151,26 @@ const TutorialOverlay = () => {
 
   const skipAll = () => endTutorial();
 
+  // Only trust a rect that belongs to the current step (avoids stale-rect flash)
+  const rectForStep =
+    targetRect && targetRect.step === tutorialStep ? targetRect : null;
+
+  // Keyed step whose target hasn't been measured yet: show just the dim mask so
+  // it transitions seamlessly into the spotlight (no wrong-position popup flash).
+  if (step?.key && !rectForStep) {
+    return (
+      <Modal visible transparent statusBarTranslucent animationType="none">
+        <Animated.View
+          style={[styles.overlayFull, { opacity: fadeAnim }]}
+          pointerEvents="auto"
+          onStartShouldSetResponder={() => true}
+        />
+      </Modal>
+    );
+  }
+
   // ── Full-screen card (no spotlight) ──────────────────────────────────────
-  if (!step?.key || !targetRect) {
+  if (!step?.key || rectForStep?.missing) {
     return (
       <Modal visible transparent statusBarTranslucent animationType="none">
         <Animated.View
@@ -194,7 +215,7 @@ const TutorialOverlay = () => {
   }
 
   // ── Spotlight card ────────────────────────────────────────────────────────
-  const { x, y, w, h } = targetRect;
+  const { x, y, w, h } = rectForStep;
   const sp = SPOTLIGHT_PAD;
   const spotTop = Math.max(0, y - sp);
   const spotLeft = Math.max(0, x - sp);

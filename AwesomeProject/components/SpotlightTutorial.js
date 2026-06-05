@@ -60,9 +60,9 @@ const SpotlightTutorial = ({ steps, stepRefs = {}, storageKey, onDone }) => {
   const measureTarget = () => {
     if (!step?.key) { setTargetRect(null); return; }
     const ref = stepRefs[step.key];
-    if (!ref?.current) { setTargetRect(null); return; }
+    if (!ref?.current) { setTargetRect({ step: stepIdx, missing: true }); return; }
     ref.current.measure((_x, _y, w, h, pageX, pageY) => {
-      setTargetRect({ x: pageX, y: pageY, w, h });
+      setTargetRect({ step: stepIdx, x: pageX, y: pageY, w, h });
     });
   };
 
@@ -70,6 +70,8 @@ const SpotlightTutorial = ({ steps, stepRefs = {}, storageKey, onDone }) => {
     if (!active) return;
     fadeAnim.setValue(0);
     Animated.timing(fadeAnim, { toValue: 1, duration: 260, useNativeDriver: true }).start();
+    // Drop the previous step's rect so it is never drawn for this step.
+    setTargetRect(null);
     const timer = setTimeout(measureTarget, 150);
     return () => clearTimeout(timer);
   }, [active, stepIdx]);
@@ -99,8 +101,26 @@ const SpotlightTutorial = ({ steps, stepRefs = {}, storageKey, onDone }) => {
 
   if (!active) return null;
 
+  // Only trust a rect that belongs to the current step (avoids stale-rect flash)
+  const rectForStep =
+    targetRect && targetRect.step === stepIdx ? targetRect : null;
+
+  // Keyed step still being measured: show only the dim mask so it transitions
+  // seamlessly into the spotlight (no centered-card flash at the wrong spot).
+  if (step?.key && !rectForStep) {
+    return (
+      <Modal visible transparent statusBarTranslucent animationType="none">
+        <Animated.View
+          style={[styles.overlayFull, { opacity: fadeAnim }]}
+          pointerEvents="auto"
+          onStartShouldSetResponder={() => true}
+        />
+      </Modal>
+    );
+  }
+
   // ── Full-screen card ──────────────────────────────────────────────────────
-  if (!step?.key || !targetRect) {
+  if (!step?.key || rectForStep?.missing) {
     return (
       <Modal visible transparent statusBarTranslucent animationType="none">
         <Animated.View
@@ -141,7 +161,7 @@ const SpotlightTutorial = ({ steps, stepRefs = {}, storageKey, onDone }) => {
   }
 
   // ── Spotlight ─────────────────────────────────────────────────────────────
-  const { x, y, w, h } = targetRect;
+  const { x, y, w, h } = rectForStep;
   const spotTop = Math.max(0, y - PAD);
   const spotLeft = Math.max(0, x - PAD);
   const spotW = w + PAD * 2;
