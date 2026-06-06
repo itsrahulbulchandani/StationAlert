@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
-import { bannerAdUnitId } from '../config/admob';
+import { bannerAdUnitId, ADS_ENABLED } from '../config/admob';
 
 export const AdBanner = () => {
   const [adError, setAdError] = useState(null);
+
+  // Ads temporarily disabled (e.g. for app promo content capture)
+  if (!ADS_ENABLED) {
+    return null;
+  }
 
   try {
     return (

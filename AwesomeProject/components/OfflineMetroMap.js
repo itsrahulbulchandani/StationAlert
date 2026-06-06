@@ -346,6 +346,9 @@ const OfflineMetroMap = forwardRef(
       },
       fitToCoordinates: coords => fitTo(coords),
       centerOn: coord => centerOn(coord),
+      // centerOn already keeps the current zoom, so follow is just an alias here
+      // (kept for parity with the iOS map's imperative API).
+      followTo: coord => centerOn(coord),
     }));
 
     const fitToScreenAnimated = (w, h) => {

@@ -44,7 +44,6 @@ import stationsFromKeys from './components/stationsFromKeys';
 import AlertOverlay from './components/AlertOverlay';
 import TutorialOverlay from './components/TutorialOverlay';
 import {TutorialProvider, useTutorial} from './src/context/TutorialContext';
-import InAppNotification from './src/components/InAppNotification';
 
 export const TabContext = createContext();
 
@@ -207,6 +206,8 @@ function AppContent({
   setRoutesFound,
   alertActive,
   setAlertActive,
+  liveTracking,
+  setLiveTracking,
   routeSelectionOpened,
   setRouteSelectionOpened,
   recentSearches,
@@ -224,9 +225,11 @@ function AppContent({
   const [showSplash, setShowSplash] = useState(true);
   const [adError, setAdError] = useState(false);
   const [activeRoute, setActiveRoute] = useState(null);
-  const [showInAppNotification, setShowInAppNotification] = useState(false);
-  const [notificationMessage, setNotificationMessage] = useState('');
   const watchId = useRef(null);
+  // Alert-notification state for the shared location watcher (refs so the single
+  // persistent watcher can read/advance them across renders).
+  const alertRouteRef = useRef(null);
+  const alertIdxRef = useRef(0);
   const appState = useRef(AppState.currentState);
   const insets = useSafeAreaInsets();
   const {theme} = useTheme();
@@ -506,12 +509,8 @@ const handleSetAlert = async (route) => {
     return;
   }
 
-  // Clear any existing watch
-  if (watchId.current) {
-    console.log('Clearing existing watch:', watchId.current);
-    Geolocation.clearWatch(watchId.current);
-    watchId.current = null;
-  }
+  // The shared location watcher (effect) owns the watch lifecycle now — no
+  // manual clearWatch here, which would otherwise interrupt live tracking.
 
   // Check current permission status
   const locationInfo = await checkLocationPermissionStatus();
@@ -560,229 +559,176 @@ const handleSetAlert = async (route) => {
 
   // Set the active route when starting alerts
   setActiveRoute(route);
+  alertRouteRef.current = route;
 
-  // Get current location first to determine starting point
+  // Get current location once to seed the starting station, then flip the state
+  // flags. The single shared location watcher (effect below) does the actual
+  // watching and fires the approach notifications via handleAlertFix.
   Geolocation.getCurrentPosition(
-    async (position) => {
+    (position) => {
       const nearestStationIndex = findNearestUpcomingStation(position, route.path);
-      
+
       if (nearestStationIndex === -1) {
         Alert.alert('Alert', 'Unable to determine your position relative to the route.');
         return;
       }
-
       // If we're at or past the last station
       if (nearestStationIndex >= route.path.length - 1) {
         Alert.alert('Alert', 'You have already passed all stations on this route.');
         return;
       }
 
-      // Configure for background location updates
-      console.log('Configuring background location updates...');
-      Geolocation.setRNConfiguration({
-        skipPermissionRequests: false,
-        authorizationLevel: 'always',
-        locationProvider: 'auto',
-        enableBackgroundLocationUpdates: true,
-        pauseLocationUpdatesAutomatically: false,
-        showsBackgroundLocationIndicator: true,
-        allowsBackgroundLocationUpdates: true
-      });
-      console.log('Background location configuration complete');
-
-      console.log('Setting up location tracking for route:', route.path);
-      let currentIdx = nearestStationIndex;
-      let lastUpdateTime = Date.now();
-
-      // Start at the first station, alert for the next
-      const checkNextStation = (position) => {
-        const now = Date.now();
-        const timeSinceLastUpdate = now - lastUpdateTime;
-        lastUpdateTime = now;
-        setAlertActive(true);
-        // Update currentCoordinates for use in RouteMapScreen
-        setCurrentCoordinates(position);
-        console.log("setting alertActive to true and updating coordinates");
-
-        // Log app state and location update details
-        const appState = AppState.currentState;
-        console.log('alertactive Location update received:', {
-          appState,
-          timeSinceLastUpdate,
-          position: {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            timestamp: new Date(position.timestamp).toISOString()
-          }
-        });
-        
-        if (!route.path || currentIdx >= route.path.length - 1) {
-          console.log('Alert cleared - End of route');
-          if (watchId.current) {
-            Geolocation.clearWatch(watchId.current);
-            watchId.current = null;
-          }
-          console.log("setting alertActive to false")
-          setAlertActive(false);
-          return;
-        }
-
-        // Resync progress to the user's actual position. The station we should
-        // alert for is the closest one still *ahead* on the route. While we're
-        // simply approaching the next station, that closest-ahead station is
-        // exactly currentIdx + 1, so nothing changes. But if GPS dropped while
-        // the train passed one or more stations, the closest-ahead station is
-        // now further along the path - so we advance past the missed stations
-        // instead of waiting forever for one that is already behind us.
-        const { nearestIndex } = findNearestStationIndexFrom(
-          position, route.path, currentIdx + 1,
-        );
-        if (nearestIndex > currentIdx + 1) {
-          const skipped = nearestIndex - (currentIdx + 1);
-          console.log(
-            `Resyncing past ${skipped} missed station(s) (GPS gap): currentIdx ${currentIdx} -> ${nearestIndex - 1}`,
-          );
-          // currentIdx tracks the last station reached; the one we're now
-          // approaching is nearestIndex, so the last reached is the one before.
-          // (nearestIndex is at most the destination, so when we've skipped all
-          // the way there, the destination's own 400m arrival alert below still
-          // fires and ends tracking - no special-casing needed here.)
-          currentIdx = nearestIndex - 1;
-        }
-
-        const nextStationId = route.path[currentIdx + 1];
-        const nextStation = stations[nextStationId];
-        const nextStationName = stationsFromKeys[nextStationId]
-        
-        if (!nextStation) {
-          console.log('Next station not found:', nextStationName);
-          PushNotificationIOS.presentLocalNotification({
-            alertBody: `Next station not found:${nextStationName}`,
-            alertTitle: "Next Stop: Delhi Metro",
-            soundName: 'default',
-            category: 'STATION_ALERT',
-            userInfo: {
-              station: nextStationName,
-              timestamp: new Date().toISOString(),
-              appState: AppState.currentState
-            },
-            applicationIconBadgeNumber: 1,
-          });
-          return;
-        }
-
-        const {latitude: stationLat, longitude: stationLon} = nextStation.coords;
-        const {latitude: userLat, longitude: userLon} = position.coords;
-        const distance = getDistanceFromLatLonInMeters(userLat, userLon, stationLat, stationLon);
-
-        console.log('Location check:', {
-          appState,
-          userLocation: {lat: userLat, lon: userLon},
-          nextStation: {name: nextStationName, lat: stationLat, lon: stationLon},
-          distance: distance,
-          accuracy: position.coords.accuracy,
-          timeSinceLastUpdate
-        });
-
-        if (distance < 400) {
-          console.log('Station approaching alert triggered for:', nextStationName);
-          
-          if (Platform.OS === 'ios') {
-            try {
-              // Show in-app notification if app is in foreground
-              if (AppState.currentState === 'active') {
-                setNotificationMessage(`You are approaching ${nextStationName}!`);
-                setShowInAppNotification(true);
-              }
-              
-              // Still show push notification
-              PushNotificationIOS.presentLocalNotification({
-                alertBody: `You are approaching ${nextStationName}!`,
-                alertTitle: "Next Stop: Delhi Metro",
-                soundName: 'default',
-                category: 'STATION_ALERT',
-                userInfo: {
-                  station: nextStationName,
-                  timestamp: new Date().toISOString(),
-                  appState: AppState.currentState,
-                  iconName: 'AppIcon60x60'  // This references your app icon
-                },
-                applicationIconBadgeNumber: 1,
-                threadIdentifier: 'station-alerts',
-                alertAction: 'view'
-              });
-              console.log('iOS notification sent successfully from state:', AppState.currentState);
-            } catch (error) {
-              console.error('Error sending iOS notification:', error);
-            }
-          } else {
-            // For Android, show in-app notification if in foreground
-            if (AppState.currentState === 'active') {
-              setNotificationMessage(`You are approaching ${nextStationName}!`);
-              setShowInAppNotification(true);
-            } else {
-              Alert.alert('Next Stop: Delhi Metro', `You are approaching ${nextStationName}!`);
-            }
-          }
-          
-          currentIdx++;
-          if (currentIdx >= route.path.length - 1) {
-            console.log('Alert cleared - Reached final station');
-            if (watchId.current) {
-              Geolocation.clearWatch(watchId.current);
-              watchId.current = null;
-            }
-            console.log("setting alertActive to false")
-            setAlertActive(false);
-          }
-        }
-      };
-
-      // Start watching position with background updates
-      console.log('Starting location watch with background updates...');
-      watchId.current = Geolocation.watchPosition(
-        checkNextStation,
-        (error) => {
-          console.log('Location error:', error);
-          console.log("setting alertActive to false")
-          setAlertActive(false);
-        },
-        { 
-          enableHighAccuracy: true,
-          distanceFilter: 10,  // Get updates when device moves by 10 meters
-          interval: 10000,    // Update every 10 seconds
-          fastestInterval: 5000,  // Fastest rate at which app can handle updates
-          maximumAge: 10000,  // Accept locations that are up to 10 seconds old
-          useSignificantChanges: false, // Get regular updates, not just significant ones
-          allowsBackgroundLocationUpdates: true // Enable background location updates
-        }  
-      );
-      
-      console.log('Location watching started with ID:', watchId.current);
+      alertIdxRef.current = nearestStationIndex;
+      setCurrentCoordinates(position);
       // Reflect the active state in the UI right away (button -> "Alert Set",
-      // live-tracking bar slides up) instead of waiting for the first GPS fix.
+      // live-tracking bar slides up). Setting an alert implies you're
+      // travelling, so turn on live tracking too.
       setAlertActive(true);
+      setLiveTracking(true);
       Alert.alert('Alert Set', 'You will be notified as you approach the next station.');
     },
     (error) => {
       console.log('Location error:', error);
-      console.log("setting alertActive to false")
       setAlertActive(false);
-    }
+    },
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 },
   );
 };
 
-  // Add handleStopAlerts function
-  const handleStopAlerts = () => {
-    if (watchId.current) {
-      console.log('Stopping alerts and clearing watch:', watchId.current);
-      Geolocation.clearWatch(watchId.current);
-      watchId.current = null;
+  // Station-approach notification logic, driven by the shared location watcher
+  // while alerts are active. Uses refs (alertRouteRef / alertIdxRef) instead of
+  // closure variables so the single persistent watcher can call it across
+  // renders and advance the progress index.
+  const handleAlertFix = (position) => {
+    const route = alertRouteRef.current;
+    if (!route?.path) return;
+
+    let currentIdx = alertIdxRef.current;
+    if (currentIdx >= route.path.length - 1) {
+      setAlertActive(false); // end of route — the effect tears the watch down
+      return;
     }
+
+    // Resync past any stations missed during a GPS gap: the station to alert for
+    // is the closest one still ahead of us on the route.
+    const { nearestIndex } = findNearestStationIndexFrom(position, route.path, currentIdx + 1);
+    if (nearestIndex > currentIdx + 1) {
+      currentIdx = nearestIndex - 1;
+      alertIdxRef.current = currentIdx;
+    }
+
+    const nextStationId = route.path[currentIdx + 1];
+    const nextStation = stations[nextStationId];
+    const nextStationName = stationsFromKeys[nextStationId];
+
+    if (!nextStation) {
+      PushNotificationIOS.presentLocalNotification({
+        alertBody: `Next station not found:${nextStationName}`,
+        alertTitle: 'Next Stop: Delhi Metro',
+        soundName: 'default',
+        category: 'STATION_ALERT',
+        userInfo: { station: nextStationName, timestamp: new Date().toISOString(), appState: AppState.currentState },
+        applicationIconBadgeNumber: 1,
+      });
+      return;
+    }
+
+    const { latitude: stationLat, longitude: stationLon } = nextStation.coords;
+    const { latitude: userLat, longitude: userLon } = position.coords;
+    const distance = getDistanceFromLatLonInMeters(userLat, userLon, stationLat, stationLon);
+
+    if (distance < 400) {
+      if (Platform.OS === 'ios') {
+        try {
+          PushNotificationIOS.presentLocalNotification({
+            alertBody: `You are approaching ${nextStationName}!`,
+            alertTitle: 'Next Stop: Delhi Metro',
+            soundName: 'default',
+            category: 'STATION_ALERT',
+            userInfo: { station: nextStationName, timestamp: new Date().toISOString(), appState: AppState.currentState, iconName: 'AppIcon60x60' },
+            applicationIconBadgeNumber: 1,
+            threadIdentifier: 'station-alerts',
+            alertAction: 'view',
+          });
+        } catch (error) {
+          console.error('Error sending iOS notification:', error);
+        }
+      } else {
+        Alert.alert('Next Stop: Delhi Metro', `You are approaching ${nextStationName}!`);
+      }
+
+      currentIdx++;
+      alertIdxRef.current = currentIdx;
+      if (currentIdx >= route.path.length - 1) {
+        setAlertActive(false); // reached destination
+      }
+    }
+  };
+
+  // Single shared location watcher. Runs while live tracking OR alerts are on,
+  // and is fully torn down + recreated whenever either flag changes (so the
+  // native observer is re-started cleanly — see note below). Using ONE watcher,
+  // instead of one here for alerts and a separate one in RouteMapScreen for the
+  // map dot, avoids the @react-native-community/geolocation shared-observer
+  // conflicts where clearing one watcher (e.g. toggling alerts) could stop the
+  // other. It always publishes currentCoordinates (consumed by the map's live
+  // dot), and runs the approach-alert notifications only while alerts are on.
+  useEffect(() => {
+    if (!liveTracking && !alertActive) return undefined;
+    let id = null;
+    let cancelled = false;
+    (async () => {
+      const ok = await requestLocationPermission();
+      if (!ok || cancelled) return;
+      // Background updates are only needed (and the 'always' authorization only
+      // requested) while alerts are active. Setting this BEFORE watchPosition
+      // matters: the library only (re)starts the native observer on the first
+      // watcher, and recreating the watch on every flag change guarantees that
+      // happens after the configuration is applied.
+      if (alertActive) {
+        Geolocation.setRNConfiguration({
+          skipPermissionRequests: false,
+          authorizationLevel: 'always',
+          locationProvider: 'auto',
+          enableBackgroundLocationUpdates: true,
+          pauseLocationUpdatesAutomatically: false,
+          showsBackgroundLocationIndicator: true,
+          allowsBackgroundLocationUpdates: true,
+        });
+      }
+      if (cancelled) return;
+      id = Geolocation.watchPosition(
+        position => {
+          setCurrentCoordinates(position);
+          if (alertActive) handleAlertFix(position);
+        },
+        error => { console.log('Location watch error:', error); },
+        {
+          enableHighAccuracy: true,
+          distanceFilter: 10,
+          interval: alertActive ? 10000 : 4000,
+          fastestInterval: alertActive ? 5000 : 2000,
+          maximumAge: 1000,
+          useSignificantChanges: false,
+          allowsBackgroundLocationUpdates: alertActive,
+        },
+      );
+      watchId.current = id;
+    })();
+    return () => {
+      cancelled = true;
+      if (id != null) Geolocation.clearWatch(id);
+      watchId.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveTracking, alertActive]);
+
+  // Stop alerts. Live tracking (if on) keeps running via the shared watcher
+  // above — only the notification logic and the active alert route are cleared.
+  const handleStopAlerts = () => {
+    alertRouteRef.current = null;
     setAlertActive(false);
     setActiveRoute(null);
-    console.log("setting alertActive to false")
     Alert.alert('Alerts Stopped', 'Station tracking alerts have been stopped.');
   };
 
@@ -813,7 +759,10 @@ const handleSetAlert = async (route) => {
         routesFound,
         setRoutesFound,
         handleSetAlert,
+        handleStopAlerts,
         alertActive,
+        liveTracking,
+        setLiveTracking,
         currentCoordinates,
         setCurrentCoordinates,
         routeSelectionOpened,
@@ -838,14 +787,6 @@ const handleSetAlert = async (route) => {
           <SplashScreen onFinish={() => { setShowSplash(false); checkAndStartTutorial(); }} />
         ) : (
           <>
-            <InAppNotification
-              message={notificationMessage}
-              isVisible={showInAppNotification}
-              onHide={() => setShowInAppNotification(false)}
-            />
-            
-
-            
             <View
               style={[styles.content, {backgroundColor: theme.softBackground}]}>
               {renderScreen()}
@@ -972,6 +913,10 @@ function App() {
   const [selectedRoute, setSelectedRoute] = useState([]);
   const [routesFound, setRoutesFound] = useState([]);
   const [alertActive, setAlertActive] = useState(false);
+  // Live tracking (foreground map follow + live position) is independent of
+  // alerts (background station notifications). Starting a journey turns this on;
+  // setting an alert turns both on.
+  const [liveTracking, setLiveTracking] = useState(false);
   const [routeSelectionOpened, setRouteSelectionOpened] = useState(false);
   const [recentSearches, setRecentSearches] = useState([
     { from: 'Kashmere Gate', to: 'Millennium City Centre Gurugram' },
@@ -1021,6 +966,8 @@ function App() {
           setRoutesFound={setRoutesFound}
           alertActive={alertActive}
           setAlertActive={setAlertActive}
+          liveTracking={liveTracking}
+          setLiveTracking={setLiveTracking}
           routeSelectionOpened={routeSelectionOpened}
           setRouteSelectionOpened={setRouteSelectionOpened}
           recentSearches={recentSearches}

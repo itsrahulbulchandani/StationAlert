@@ -1,5 +1,8 @@
 import mobileAds, { TestIds, MaxAdContentRating } from 'react-native-google-mobile-ads';
 
+// Toggle all ads on/off (e.g. set false while capturing app promo content).
+export const ADS_ENABLED = true;
+
 // Initialize the Google Mobile Ads SDK with configuration
 const initializeAdMob = async () => {
   try {
@@ -19,10 +22,12 @@ const initializeAdMob = async () => {
   }
 };
 
-// Initialize AdMob
-initializeAdMob().catch(error => {
-  console.warn('AdMob initialization promise error:', error);
-});
+// Initialize AdMob (skipped while ads are disabled)
+if (ADS_ENABLED) {
+  initializeAdMob().catch(error => {
+    console.warn('AdMob initialization promise error:', error);
+  });
+}
 
 // Use test IDs for development and real IDs for production
 export const bannerAdUnitId = __DEV__ 

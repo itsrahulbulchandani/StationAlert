@@ -137,6 +137,7 @@ const JourneyMap = forwardRef(
       routeInterchangeSet = new Set(),
       currentLocation = null,
       getLineInfo = () => ({color: '#888'}),
+      onUserPan = () => {},
     },
     ref,
   ) => {
@@ -175,6 +176,15 @@ const JourneyMap = forwardRef(
           },
           800,
         ),
+      // Like centerOn, but keeps the user's current zoom level (moves the
+      // camera centre only). Used for continuous live-tracking follow so the
+      // map doesn't snap back to a fixed zoom on every GPS fix.
+      followTo: coord =>
+        coord &&
+        mapRef.current?.animateCamera(
+          {center: {latitude: coord.latitude, longitude: coord.longitude}},
+          {duration: 500},
+        ),
     }));
 
     return (
@@ -184,6 +194,7 @@ const JourneyMap = forwardRef(
         cameraZoomRange={CAMERA_ZOOM_RANGE}
         initialRegion={INITIAL_REGION}
         moveOnMarkerPress={false}
+        onPanDrag={onUserPan}
         mapType="mutedStandard"
         customMapStyle={MINIMAL_MAP_STYLE}
         showsPointsOfInterest={false}

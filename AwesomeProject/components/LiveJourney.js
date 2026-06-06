@@ -37,6 +37,24 @@ const distanceM = (lat1, lon1, lat2, lon2) => {
   return R * 2 * Math.asin(Math.sqrt(a));
 };
 
+// Project point p onto the segment a→b. Returns the fraction `t` (0..1) of the
+// way along the segment closest to p, plus the perpendicular distance in metres.
+// Uses an equirectangular approximation (fine over a single inter-station hop),
+// scaling longitude by cos(lat) so the geometry isn't skewed.
+const projectFrac = (p, a, b) => {
+  const k = Math.cos((a.latitude * Math.PI) / 180);
+  const ax = a.longitude * k, ay = a.latitude;
+  const bx = b.longitude * k, by = b.latitude;
+  const px = p.longitude * k, py = p.latitude;
+  const dx = bx - ax, dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  let t = len2 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  const cx = ax + dx * t, cy = ay + dy * t;
+  const dist = Math.sqrt((px - cx) ** 2 + (py - cy) ** 2) * 111000;
+  return {t, dist};
+};
+
 const coordsOf = id => stationsWithIDs[id]?.coords || stationsWithIDs[String(id)]?.coords;
 
 const fmtDist = m => (m == null ? '' : m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`);
@@ -73,11 +91,14 @@ const LiveJourney = ({item, onClose, liveCoords, embedded, onChangeView, alertAc
   const lastIdx = path.length - 1;
 
   const [currentIdx, setCurrentIdx] = useState(0);
+  const [segFrac, setSegFrac] = useState(0); // 0..1 progress toward next station
   const [nextDist, setNextDist] = useState(null);
   const [tracking, setTracking] = useState(false);
   const [arrived, setArrived] = useState(false);
 
   const idxRef = useRef(0);
+  const progRef = useRef(0); // forward-only progress (index + fraction)
+  const rowHeights = useRef([]); // measured row heights, for sliding the puck
   const watchId = useRef(null);
   const scrollRef = useRef(null);
 
@@ -96,30 +117,52 @@ const LiveJourney = ({item, onClose, liveCoords, embedded, onChangeView, alertAc
     return () => loop.stop();
   }, [pulse]);
 
-  // Update progress from a GPS fix. Snaps to the nearest station on the route,
-  // but never moves backward (a train follows the route forward) so noisy
-  // fixes don't make the dot jump back.
+  // Update progress from a GPS fix. Projects the live position onto the route's
+  // segments to get a continuous position (station index + fraction toward the
+  // next station), so the dot slides along the line as you approach the next
+  // stop instead of snapping. Progress never moves backward (a train follows
+  // the route forward) so noisy fixes don't make the dot jump back.
   const onFix = coords => {
-    let best = idxRef.current;
+    let bestI = 0;
+    let bestT = 0;
     let bestD = Infinity;
-    for (let i = 0; i < path.length; i++) {
-      const c = coordsOf(path[i]);
-      if (!c) continue;
-      const d = distanceM(coords.latitude, coords.longitude, c.latitude, c.longitude);
-      if (d < bestD) {
-        bestD = d;
-        best = i;
+    for (let i = 0; i < lastIdx; i++) {
+      const a = coordsOf(path[i]);
+      const b = coordsOf(path[i + 1]);
+      if (!a || !b) continue;
+      const {t, dist} = projectFrac(coords, a, b);
+      if (dist < bestD) {
+        bestD = dist;
+        bestI = i;
+        bestT = t;
       }
     }
-    const next = Math.max(idxRef.current, best);
-    idxRef.current = next;
-    setCurrentIdx(next);
 
-    if (next >= lastIdx) {
+    const prog = Math.max(progRef.current, bestI + bestT);
+    progRef.current = prog;
+
+    let idx = Math.min(lastIdx, Math.floor(prog + 1e-6));
+    let frac = prog - idx;
+
+    // Snap to "arrived" once at/near the final station.
+    const lastC = coordsOf(path[lastIdx]);
+    const dLast = lastC
+      ? distanceM(coords.latitude, coords.longitude, lastC.latitude, lastC.longitude)
+      : Infinity;
+    if (idx >= lastIdx || dLast < 120) {
+      idx = lastIdx;
+      frac = 0;
       setArrived(true);
+    }
+
+    idxRef.current = idx;
+    setCurrentIdx(idx);
+    setSegFrac(frac);
+
+    if (idx >= lastIdx) {
       setNextDist(0);
     } else {
-      const nc = coordsOf(path[next + 1]);
+      const nc = coordsOf(path[idx + 1]);
       setNextDist(
         nc
           ? distanceM(coords.latitude, coords.longitude, nc.latitude, nc.longitude)
@@ -212,7 +255,12 @@ const LiveJourney = ({item, onClose, liveCoords, embedded, onChangeView, alertAc
     const isHere = i === currentIdx;
 
     return (
-      <View key={`live-${id}-${i}`} style={[styles.row, {minHeight: ROW_H}]}>
+      <View
+        key={`live-${id}-${i}`}
+        style={[styles.row, {minHeight: ROW_H}]}
+        onLayout={e => {
+          rowHeights.current[i] = e.nativeEvent.layout.height;
+        }}>
         <View style={styles.dotCol}>
           {!isOrigin && (
             <View
@@ -231,14 +279,8 @@ const LiveJourney = ({item, onClose, liveCoords, embedded, onChangeView, alertAc
             />
           )}
 
-          {isHere ? (
-            <View style={styles.hereWrap}>
-              <Animated.View style={[styles.herePulse, pulseStyle]} />
-              <View style={styles.hereDot}>
-                <View style={styles.hereDotCore} />
-              </View>
-            </View>
-          ) : isOrigin || isDest ? (
+          {/* Station marker (always drawn — the live puck floats over it). */}
+          {isOrigin || isDest ? (
             <View
               style={[
                 styles.ringDot,
@@ -260,6 +302,22 @@ const LiveJourney = ({item, onClose, liveCoords, embedded, onChangeView, alertAc
                 {backgroundColor: passed ? '#CDD1D8' : segColor},
               ]}
             />
+          )}
+
+          {/* Live "you are here" puck. Sits on the current station, then slides
+              down the connector toward the next station as you approach it. */}
+          {isHere && (
+            <Animated.View
+              style={[
+                styles.hereWrap,
+                styles.hereOverlay,
+                {transform: [{translateY: segFrac * (rowHeights.current[i] || ROW_H)}]},
+              ]}>
+              <Animated.View style={[styles.herePulse, pulseStyle]} />
+              <View style={styles.hereDot}>
+                <View style={styles.hereDotCore} />
+              </View>
+            </Animated.View>
           )}
         </View>
 
@@ -306,7 +364,8 @@ const LiveJourney = ({item, onClose, liveCoords, embedded, onChangeView, alertAc
           ) : (
             <Text style={styles.headerTitle}>Live Journey</Text>
           )}
-          <View style={styles.circleBtn} />
+          {/* Invisible spacer to keep the center toggle balanced opposite the back button. */}
+          <View style={styles.headerSpacer} />
         </View>
 
         {/* Live status banner */}
@@ -366,6 +425,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   headerTitle: {fontSize: 20, fontWeight: '700', color: '#1A1A1A'},
+  headerSpacer: {width: 40, height: 40},
   circleBtn: {
     width: 40,
     height: 40,
@@ -436,6 +496,10 @@ const styles = StyleSheet.create({
   smallDot: {width: 11, height: 11, borderRadius: 6, marginTop: 8},
 
   hereWrap: {width: 30, height: 30, alignItems: 'center', justifyContent: 'center', marginTop: 4},
+  // Overlay positioning so the puck floats above the static station dot and can
+  // be translated down the connector without affecting layout. dotCol is 48 wide
+  // ((48-30)/2 = 9); top -1 aligns the 30px puck's centre with the dot (~14px).
+  hereOverlay: {position: 'absolute', top: -1, left: 9, marginTop: 0, zIndex: 5},
   herePulse: {
     position: 'absolute',
     width: 30,

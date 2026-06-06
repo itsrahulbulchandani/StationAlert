@@ -117,7 +117,7 @@ const RouteMapScreen = () => {
   const [showMarkers, setShowMarkers] = useState(false);
   const [markerData, setMarkerData] = useState([]);
   const [currentZoom, setCurrentZoom] = useState(10);
-  const { selectedRoute=[], setSelectedRoute, alertActive, currentCoordinates, setActiveTab, setRoutesFound, setRouteSelectionOpened } = useContext(TabContext);
+  const { selectedRoute=[], setSelectedRoute, alertActive, liveTracking, setLiveTracking, handleSetAlert, handleStopAlerts, currentCoordinates, setActiveTab, setRoutesFound, setRouteSelectionOpened } = useContext(TabContext);
   const [currentLocation, setCurrentLocation] = useState(null);
   // Only default to the Route view when a route actually exists; otherwise the
   // (disabled) Route segment would look pre-selected with nothing to show.
@@ -149,6 +149,13 @@ const RouteMapScreen = () => {
   }, []);
   const hasRequestedLocation = useRef(false);
   const hasAnimatedToRoute = useRef(false);
+  // While true, the map auto-follows the live position during tracking. Turns
+  // off as soon as the user pans the map (so they can look around freely) and
+  // back on when they tap the locate button.
+  const followingRef = useRef(true);
+  const onUserPan = useRef(() => {
+    followingRef.current = false;
+  }).current;
   const [mapReady, setMapReady] = useState(true);
   const [initialRegion, setInitialRegion] = useState({
     latitude: 28.6139,
@@ -217,6 +224,22 @@ const RouteMapScreen = () => {
       }
     } else if (mapRef.current) {
       mapRef.current.reset();
+    }
+  };
+
+  // Map-screen controls to enable/disable live tracking and alerts on the fly.
+  const toggleLiveTracking = () => {
+    if (alertActive) return; // alerts depend on tracking — keep it on
+    followingRef.current = true; // re-arm auto-follow when (re)enabling
+    setLiveTracking(prev => !prev);
+  };
+
+  const toggleAlerts = () => {
+    if (alertActive) {
+      handleStopAlerts && handleStopAlerts();
+    } else if (hasRoute) {
+      followingRef.current = true;
+      handleSetAlert && handleSetAlert(selectedRoute); // also turns live tracking on
     }
   };
 
@@ -320,18 +343,27 @@ const RouteMapScreen = () => {
     }
   }, [stationsLoaded, loading, markerData]);
 
-  // Effect to update currentLocation when currentCoordinates changes during alert tracking
+  // The live location comes from the single shared watcher in App (published as
+  // currentCoordinates) — for both live-tracking-only and alert tracking. Mirror
+  // it into currentLocation for the map dot / Line view. (Map follow is handled
+  // by the effect below.) Cleared when neither mode is active.
   useEffect(() => {
-    if (alertActive && currentCoordinates) {
+    if ((liveTracking || alertActive) && currentCoordinates?.coords) {
       const { latitude, longitude } = currentCoordinates.coords;
-      console.log("Updating map with alert tracking coordinates:", { latitude, longitude });
       setCurrentLocation({ latitude, longitude });
-      // Auto-follow the user's live position during active journey tracking.
-      if (mapRef.current) {
-        mapRef.current.centerOn({ latitude, longitude });
-      }
+    } else if (!liveTracking && !alertActive) {
+      setCurrentLocation(null);
     }
-  }, [alertActive, currentCoordinates]);
+  }, [liveTracking, alertActive, currentCoordinates]);
+
+  // Unified live-follow: while live tracking is on, keep the map centred on the
+  // user's position (preserving zoom), until they pan away. Re-armed by the
+  // locate button and by toggling tracking back on.
+  useEffect(() => {
+    if (liveTracking && currentLocation && mapRef.current && followingRef.current) {
+      mapRef.current.followTo(currentLocation);
+    }
+  }, [liveTracking, currentLocation]);
 
   // Station ID ranges for each line
   const routeRanges = {
@@ -441,36 +473,11 @@ const RouteMapScreen = () => {
     }
   };
 
-  // Continuously follow the device location so the live "you are here" dot
-  // auto-updates while travelling (both the map dot and the Line view).
-  useEffect(() => {
-    let id = null;
-    let cancelled = false;
-    (async () => {
-      const ok = await requestLocationPermission();
-      if (!ok || cancelled) return;
-      id = Geolocation.watchPosition(
-        pos =>
-          setCurrentLocation({
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-          }),
-        () => {},
-        {
-          enableHighAccuracy: true,
-          distanceFilter: 10,
-          interval: 4000,
-          fastestInterval: 2000,
-          maximumAge: 1000,
-        },
-      );
-    })();
-    return () => {
-      cancelled = true;
-      if (id != null) Geolocation.clearWatch(id);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // NOTE: the live location watcher lives in App.js as a single shared watcher
+  // (published via currentCoordinates and mirrored into currentLocation above).
+  // RouteMapScreen intentionally does NOT run its own watchPosition — two
+  // watchers on the shared native observer conflict (toggling alerts could stop
+  // live tracking). The locate button still uses a one-shot getCurrentPosition.
 
   const tabContextRef = useRef();
 
@@ -483,6 +490,8 @@ const RouteMapScreen = () => {
   const [mapKey, setMapKey] = useState(0);
 
   const getCurrentLocation = () => {
+    // Tapping locate re-arms auto-follow (the user explicitly wants to recenter).
+    followingRef.current = true;
     // If alerts are active, use the coordinates from alert tracking
     if (alertActive && tabContextRef.current?.currentCoordinates) {
       const { latitude, longitude } = tabContextRef.current.currentCoordinates.coords;
@@ -577,6 +586,7 @@ const RouteMapScreen = () => {
         routeInterchangeSet={routeInterchangeSet}
         currentLocation={currentLocation}
         getLineInfo={getLineInfo}
+        onUserPan={onUserPan}
       />
     );
   };
@@ -702,11 +712,37 @@ const RouteMapScreen = () => {
                 <Text style={styles.routeStatLabel}>Fare</Text>
               </View>
             </View>
+            {/* Live tracking & alert toggles */}
+            <View style={styles.toggleRow}>
+              <TouchableOpacity
+                style={[styles.toggleChip, {marginRight: 10}, liveTracking && styles.toggleChipOn, alertActive && {opacity: 0.7}]}
+                onPress={toggleLiveTracking}
+                activeOpacity={alertActive ? 1 : 0.7}>
+                <Icon name="navigate" size={16} color={liveTracking ? RED : '#9A9A9A'} />
+                <Text style={[styles.toggleChipText, liveTracking && styles.toggleChipTextOn]} numberOfLines={1}>Live Tracking</Text>
+                <View style={[styles.toggleTrack, liveTracking && styles.toggleTrackOn]}>
+                  <View style={[styles.toggleKnob, liveTracking && styles.toggleKnobOn]} />
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.toggleChip, alertActive && styles.toggleChipOn]}
+                onPress={toggleAlerts}
+                activeOpacity={0.7}>
+                <Icon name="notifications" size={16} color={alertActive ? RED : '#9A9A9A'} />
+                <Text style={[styles.toggleChipText, alertActive && styles.toggleChipTextOn]} numberOfLines={1}>Alerts</Text>
+                <View style={[styles.toggleTrack, alertActive && styles.toggleTrackOn]}>
+                  <View style={[styles.toggleKnob, alertActive && styles.toggleKnobOn]} />
+                </View>
+              </TouchableOpacity>
+            </View>
+
             <View style={styles.routeCardBottom}>
-              {alertActive ? (
+              {liveTracking ? (
                 <View style={styles.liveRow}>
                   <View style={styles.liveDotPulse} />
-                  <Text style={styles.liveTrackingText}>Live Tracking Active</Text>
+                  <Text style={styles.liveTrackingText}>
+                    {alertActive ? 'Tracking + Alerts on' : 'Live Tracking Active'}
+                  </Text>
                 </View>
               ) : (
                 <View style={styles.viaRow}>
@@ -859,6 +895,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     borderTopWidth: 1, borderTopColor: '#F0F0F0', marginTop: 12, paddingTop: 10,
   },
+  toggleRow: { flexDirection: 'row', marginTop: 12 },
+  toggleChip: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#F7F7F7', borderRadius: 12, paddingVertical: 9, paddingHorizontal: 10,
+    borderWidth: 1, borderColor: '#F0F0F0',
+  },
+  toggleChipOn: { backgroundColor: '#FDECEC', borderColor: '#F7C9C9' },
+  toggleChipText: { flex: 1, fontSize: 12.5, fontWeight: '700', color: '#9A9A9A', marginLeft: 6 },
+  toggleChipTextOn: { color: RED },
+  toggleTrack: { width: 30, height: 18, borderRadius: 9, backgroundColor: '#D7D7D7', padding: 2, justifyContent: 'center' },
+  toggleTrackOn: { backgroundColor: RED },
+  toggleKnob: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#fff' },
+  toggleKnobOn: { alignSelf: 'flex-end' },
   viaRow: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   viaText: { fontSize: 14, color: '#555', fontWeight: '600', marginLeft: 8 },
   liveRow: { flexDirection: 'row', alignItems: 'center', flex: 1 },

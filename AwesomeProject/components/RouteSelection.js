@@ -71,6 +71,7 @@ const RouteSelection = ({onClose}) => {
     setSelectedRoute,
     setActiveTab,
     handleSetAlert,
+    setLiveTracking,
     alertActive,
     favourites = [],
     setFavourites,
@@ -175,6 +176,9 @@ const RouteSelection = ({onClose}) => {
 
   const startJourney = () => {
     setSelectedRoute(activeRoute);
+    // Live tracking on by default when a journey starts (alerts stay opt-in via
+    // the Set Alert button / the map screen toggle).
+    setLiveTracking && setLiveTracking(true);
     setActiveTab('route');
     onClose && onClose();
   };

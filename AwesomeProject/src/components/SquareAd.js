@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Platform, Dimensions } from 'react-native';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
-import { squareAdUnitId } from '../config/admob';
+import { squareAdUnitId, ADS_ENABLED } from '../config/admob';
 
 export const SquareAd = () => {
   const [adError, setAdError] = useState(null);
+
+  // Ads temporarily disabled (e.g. for app promo content capture)
+  if (!ADS_ENABLED) {
+    return null;
+  }
 
   // Debug logging
   console.log('SquareAd - unitId:', squareAdUnitId);
