@@ -36,12 +36,9 @@
       </activity>
 
       <!-- AdMob App ID. Required by react-native-google-mobile-ads; without it the
-           app crashes on launch (MobileAdsInitProvider "Invalid application ID").
-           TODO: this is Google's public TEST App ID. Replace with the real Android
-           AdMob App ID (ca-app-pub-1713281088911988~XXXXXXXXXX) before any
-           production / Play Store build. -->
+           app crashes on launch (MobileAdsInitProvider "Invalid application ID"). -->
       <meta-data
         android:name="com.google.android.gms.ads.APPLICATION_ID"
-        android:value="ca-app-pub-3940256099942544~3347511713" />
+        android:value="ca-app-pub-1713281088911988~3315629324" />
     </application>
 </manifest>

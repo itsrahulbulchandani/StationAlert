@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import mobileAds, { TestIds, MaxAdContentRating } from 'react-native-google-mobile-ads';
 
 // Toggle all ads on/off (e.g. set false while capturing app promo content).
@@ -29,14 +30,20 @@ if (ADS_ENABLED) {
   });
 }
 
-// Use test IDs for development and real IDs for production
-export const bannerAdUnitId = __DEV__ 
+// Use test IDs for development and real, platform-specific IDs for production
+export const bannerAdUnitId = __DEV__
   ? TestIds.BANNER
-  : 'ca-app-pub-1713281088911988/4464743591'; // Replace XXXXXXXX with your actual banner ad unit ID
+  : Platform.select({
+      ios: 'ca-app-pub-1713281088911988/4464743591',
+      android: 'ca-app-pub-1713281088911988/9689465989',
+    });
 
 export const squareAdUnitId = __DEV__
   ? TestIds.MEDIUM_RECTANGLE
-  : 'ca-app-pub-1713281088911988/5887450567'; // Replace YYYYYYYY with your actual medium rectangle ad unit ID 
+  : Platform.select({
+      ios: 'ca-app-pub-1713281088911988/5887450567',
+      android: 'ca-app-pub-1713281088911988/3531622871',
+    });
 
 // Debug logging
 console.log('admob.js - __DEV__:', __DEV__);
