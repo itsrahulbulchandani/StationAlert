@@ -12,6 +12,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Required to start a foreground service (API 28+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Required for foreground services that access location (API 34+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
     <application
       android:name=".MainApplication"
@@ -54,6 +58,12 @@
 
       <receiver android:name="com.dieam.reactnativepushnotification.modules.RNPushNotificationActions" />
       <receiver android:name="com.dieam.reactnativepushnotification.modules.RNPushNotificationPublisher" />
+      <!-- Native foreground service for background station-approach alerts -->
+      <service
+        android:name=".StationAlertService"
+        android:foregroundServiceType="location"
+        android:exported="false" />
+
       <receiver
         android:name="com.dieam.reactnativepushnotification.modules.RNPushNotificationBootEventReceiver"
         android:exported="false">

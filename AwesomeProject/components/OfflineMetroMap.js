@@ -484,7 +484,7 @@ const OfflineMetroMap = forwardRef(
           ref={cameraRef}
           defaultSettings={{centerCoordinate: defaultCenter, zoomLevel: 10}}
           minZoomLevel={10}
-          maxZoomLevel={12}
+          maxZoomLevel={13}
           maxBounds={maxBounds}
         />
       ),
@@ -592,6 +592,23 @@ const OfflineMetroMap = forwardRef(
                 ]}
                 style={labelStyle}
               />
+              <SymbolLayer
+                id="all-station-labels"
+                // At the deepest zoom (13) every non-interchange station gets a
+                // label. Allow-overlap is forced so none are dropped by the
+                // collision engine — the user has zoomed in far enough to see all.
+                filter={[
+                  'all',
+                  ['==', ['get', 'interchange'], 0],
+                  ['!=', ['get', 'tapped'], 1],
+                  ['>=', ['zoom'], 13],
+                ]}
+                style={{
+                  ...labelStyle,
+                  iconAllowOverlap: true,
+                  textAllowOverlap: true,
+                }}
+              />
           </ShapeSource>
 
           {/* Stations + labels — journey view. Permanently mounted (data toggled
@@ -664,6 +681,22 @@ const OfflineMetroMap = forwardRef(
                   // favour — an endpoint label must never be dropped.
                   textRadialOffset: ['case', ['==', ['get', 'ep'], 1], 1.4, 1.1],
                   symbolSortKey: ['case', ['==', ['get', 'ep'], 1], 0, 1],
+                }}
+              />
+              <SymbolLayer
+                id="all-route-labels"
+                // At zoom 13 every mid-route station (lbl=0) also gets a label.
+                filter={[
+                  'all',
+                  ['==', ['get', 'lbl'], 0],
+                  ['!=', ['get', 'tapped'], 1],
+                  ['>=', ['zoom'], 13],
+                ]}
+                style={{
+                  ...labelStyle,
+                  textRadialOffset: 1.1,
+                  iconAllowOverlap: true,
+                  textAllowOverlap: true,
                 }}
               />
           </ShapeSource>

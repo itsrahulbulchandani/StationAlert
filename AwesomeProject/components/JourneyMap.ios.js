@@ -30,7 +30,7 @@ const INITIAL_REGION = {
 };
 
 const CAMERA_ZOOM_RANGE = {
-  minCenterCoordinateDistance: 10000,
+  minCenterCoordinateDistance: 5000,
   maxCenterCoordinateDistance: 60000,
   animated: true,
 };
@@ -111,15 +111,49 @@ const SmallCallout = ({text}) => (
   </View>
 );
 
+const StationLabelMarker = ({name, color}) => (
+  <View style={{alignItems: 'center', justifyContent: 'center'}}>
+    <Text
+      style={{
+        color: '#1A1A1A',
+        backgroundColor: 'rgba(255,255,255,0.92)',
+        fontSize: 9,
+        fontWeight: '700',
+        paddingHorizontal: 5,
+        paddingVertical: 2,
+        borderRadius: 5,
+        textAlign: 'center',
+        marginBottom: 3,
+        maxWidth: 76,
+        overflow: 'hidden',
+      }}>
+      {name}
+    </Text>
+    <View
+      style={{
+        width: 7,
+        height: 7,
+        backgroundColor: color,
+        borderRadius: 3.5,
+        borderWidth: 1.5,
+        borderColor: '#FFFFFF',
+      }}
+    />
+  </View>
+);
+
 // react-native-maps freezes a custom marker once tracksViewChanges is false;
 // each marker tracks until shortly after it mounts, then freezes itself so it
-// renders crisply without per-frame redraw cost.
-const FrozenMarker = ({children, ...props}) => {
+// renders crisply without per-frame redraw cost. showAllLabels is a dependency
+// so the marker briefly re-thaws whenever the label visibility state changes,
+// allowing Apple Maps to pick up the new child view before refreezing.
+const FrozenMarker = ({children, showAllLabels, ...props}) => {
   const [tracks, setTracks] = useState(true);
   React.useEffect(() => {
+    setTracks(true);
     const id = setTimeout(() => setTracks(false), 800);
     return () => clearTimeout(id);
-  }, []);
+  }, [showAllLabels]);
   return (
     <Marker tracksViewChanges={tracks} {...props}>
       {children}
@@ -143,6 +177,11 @@ const JourneyMap = forwardRef(
     ref,
   ) => {
     const mapRef = useRef(null);
+    const [showAllLabels, setShowAllLabels] = useState(false);
+
+    const onRegionChangeComplete = region => {
+      setShowAllLabels(region.latitudeDelta < 0.1);
+    };
 
     const zoomBy = async delta => {
       if (!mapRef.current) return;
@@ -196,6 +235,7 @@ const JourneyMap = forwardRef(
         initialRegion={INITIAL_REGION}
         moveOnMarkerPress={false}
         onPanDrag={onUserPan}
+        onRegionChangeComplete={onRegionChangeComplete}
         mapType="mutedStandard"
         customMapStyle={MINIMAL_MAP_STYLE}
         showsPointsOfInterest={false}
@@ -208,7 +248,8 @@ const JourneyMap = forwardRef(
             coordinate={currentLocation}
             title="You are here"
             anchor={{x: 0.5, y: 0.5}}
-            zIndex={7}>
+            zIndex={7}
+            showAllLabels={showAllLabels}>
             <View style={styles.currentLocationMarker}>
               <View style={styles.currentLocationInner} />
             </View>
@@ -275,9 +316,19 @@ const JourneyMap = forwardRef(
               if (isOrigin || isDest) {
                 child = <RouteEndpoint color={segColor} label={isOrigin ? 'A' : 'B'} />;
               } else if (isInterchange) {
-                child = <RouteInterchange color={segColor} />;
+                child = showAllLabels ? (
+                  <View style={{alignItems: 'center'}}>
+                    <Text style={styles.routeStationLabel}>{st.name}</Text>
+                    <RouteInterchange color={segColor} />
+                  </View>
+                ) : <RouteInterchange color={segColor} />;
               } else {
-                child = <RouteDot color={segColor} />;
+                child = showAllLabels ? (
+                  <View style={{alignItems: 'center'}}>
+                    <Text style={styles.routeStationLabel}>{st.name}</Text>
+                    <RouteDot color={segColor} />
+                  </View>
+                ) : <RouteDot color={segColor} />;
               }
               return (
                 <FrozenMarker
@@ -285,7 +336,8 @@ const JourneyMap = forwardRef(
                   coordinate={st.coords}
                   title={st.name}
                   anchor={{x: 0.5, y: 0.5}}
-                  zIndex={isOrigin || isDest ? 6 : isInterchange ? 5 : 4}>
+                  zIndex={isOrigin || isDest ? 6 : isInterchange ? 5 : 4}
+                  showAllLabels={showAllLabels}>
                   <View pointerEvents="none">{child}</View>
                 </FrozenMarker>
               );
@@ -297,7 +349,8 @@ const JourneyMap = forwardRef(
                   <FrozenMarker
                     key={`all-${marker.id}`}
                     coordinate={marker.coords}
-                    anchor={{x: 0.5, y: 0.5}}>
+                    anchor={{x: 0.5, y: 0.5}}
+                    showAllLabels={showAllLabels}>
                     <View pointerEvents="none">
                       <InterchangeMarker name={marker.name} color={marker.color_code} />
                     </View>
@@ -308,13 +361,20 @@ const JourneyMap = forwardRef(
                 <FrozenMarker
                   key={`all-${marker.id}`}
                   coordinate={marker.coords}
-                  anchor={{x: 0.5, y: 0.5}}>
+                  anchor={{x: 0.5, y: 0.5}}
+                  showAllLabels={showAllLabels}>
                   <View pointerEvents="none">
-                    <CustomMarker color={marker.color_code} size={7} borderWidth={1.5} />
+                    {showAllLabels ? (
+                      <StationLabelMarker name={marker.name} color={marker.color_code} />
+                    ) : (
+                      <CustomMarker color={marker.color_code} size={7} borderWidth={1.5} />
+                    )}
                   </View>
-                  <Callout tooltip alphaHitTest onPress={e => e.stopPropagation()}>
-                    <SmallCallout text={marker.name} />
-                  </Callout>
+                  {!showAllLabels && (
+                    <Callout tooltip alphaHitTest onPress={e => e.stopPropagation()}>
+                      <SmallCallout text={marker.name} />
+                    </Callout>
+                  )}
                 </FrozenMarker>
               );
             })}
@@ -371,6 +431,19 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
   },
   calloutText: {fontSize: 9, color: '#000', textAlign: 'center', fontWeight: '500'},
+  routeStationLabel: {
+    color: '#1A1A1A',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    fontSize: 9,
+    fontWeight: '700',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 5,
+    textAlign: 'center',
+    marginBottom: 3,
+    maxWidth: 76,
+    overflow: 'hidden',
+  },
   currentLocationMarker: {
     width: 30,
     height: 30,

@@ -9,6 +9,8 @@ import {
   AppState,
   Alert,
   Dimensions,
+  NativeModules,
+  NativeEventEmitter,
 } from 'react-native';
 import {SafeAreaProvider, useSafeAreaInsets, initialWindowMetrics} from 'react-native-safe-area-context';
 import {
@@ -232,6 +234,21 @@ function AppContent({
   const alertRouteRef = useRef(null);
   const alertIdxRef = useRef(0);
   const appState = useRef(AppState.currentState);
+
+  // Android: listen for events emitted by the native StationAlertService.
+  // The service runs in the background independently of the JS thread, so this
+  // is the only way to know when it has finished or when a station was passed.
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !NativeModules.StationAlert) return;
+    const emitter = new NativeEventEmitter(NativeModules.StationAlert);
+    const subStopped = emitter.addListener('onAlertStopped', () => {
+      alertRouteRef.current = null;
+      setAlertActive(false);
+      setActiveRoute(null);
+    });
+    return () => subStopped.remove();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const insets = useSafeAreaInsets();
   const {theme} = useTheme();
   const { registerRef, checkAndStartTutorial } = useTutorial();
@@ -503,11 +520,13 @@ const requestLocationPermission = async () => {
       return false;
     }
 
-    // If basic location granted, request background location
-    const backgroundResult = await request(getBackgroundLocationPermission());
-    console.log('Background location permission result:', getPermissionStatusText(backgroundResult));
-    
-    // Return true if we have basic location (background is nice to have but not required)
+    // Background location is optional — don't let its request (which can throw
+    // on Android 11+ because it requires a Settings round-trip) block the watcher.
+    try {
+      await request(getBackgroundLocationPermission());
+    } catch (e) {
+      console.log('Background location request (non-fatal):', e);
+    }
     return true;
   } catch (error) {
     console.log('Location permission request error:', error);
@@ -557,20 +576,30 @@ const handleSetAlert = async (route) => {
     notifications: getPermissionStatusText(notificationStatus)
   });
 
-  // If permissions were previously granted but not optimal, show settings prompt
-  const hasPermissionIssues = (
-    locationInfo.status === RESULTS.BLOCKED || locationInfo.status === RESULTS.DENIED ||
-    // Only a *blocked* notification permission needs the settings prompt; a
-    // plain DENIED (never asked) falls through and is requested below.
-    notificationStatus === RESULTS.BLOCKED ||
-    (locationInfo.status === RESULTS.GRANTED && !locationInfo.hasBackground)
+  // Hard failures: location is fully blocked/denied, or on iOS notifications
+  // are blocked (iOS alerts are useless without them). These must be fixed in
+  // Settings before the alert can work at all.
+  const isHardBlock = (
+    locationInfo.status === RESULTS.BLOCKED ||
+    locationInfo.status === RESULTS.DENIED ||
+    (notificationStatus === RESULTS.BLOCKED && Platform.OS === 'ios')
   );
 
-  if (hasPermissionIssues) {
-    const promptShown = showPermissionSettingsPrompt(locationInfo, notificationStatus);
-    if (promptShown) {
-      return; // Exit early if we showed the settings prompt
-    }
+  // Advisory only: background location not granted means alerts only fire
+  // while the app is open, but they DO still work. Show the settings tip once
+  // so the user knows, but proceed — do NOT return early.
+  const hasAdvisory =
+    (locationInfo.status === RESULTS.GRANTED && !locationInfo.hasBackground) ||
+    (notificationStatus === RESULTS.BLOCKED && Platform.OS === 'android');
+
+  if (isHardBlock) {
+    showPermissionSettingsPrompt(locationInfo, notificationStatus);
+    return;
+  }
+
+  if (hasAdvisory) {
+    showPermissionSettingsPrompt(locationInfo, notificationStatus);
+    // Continue — foreground location is enough for in-app alerts.
   }
 
   // Request permissions if not granted
@@ -615,12 +644,23 @@ const handleSetAlert = async (route) => {
 
       alertIdxRef.current = nearestStationIndex;
       setCurrentCoordinates(position);
-      // Reflect the active state in the UI right away (button -> "Alert Set",
-      // live-tracking bar slides up). Setting an alert implies you're
-      // travelling, so turn on live tracking too.
       setAlertActive(true);
       setLiveTracking(true);
       Alert.alert('Alert Set', 'You will be notified as you approach the next station.');
+
+      // Android: hand off to the native foreground service, which keeps running
+      // even when the app is backgrounded or the screen is off.
+      if (Platform.OS === 'android' && NativeModules.StationAlert) {
+        const upcoming = route.path
+          .slice(nearestStationIndex + 1)
+          .map(id => {
+            const s = stations[id];
+            if (!s) return null;
+            return {name: stationsFromKeys[id] || '', lat: s.coords.latitude, lon: s.coords.longitude};
+          })
+          .filter(Boolean);
+        NativeModules.StationAlert.startAlert(upcoming);
+      }
     },
     (error) => {
       console.log('Location error:', error);
@@ -754,7 +794,9 @@ const handleSetAlert = async (route) => {
       id = Geolocation.watchPosition(
         position => {
           setCurrentCoordinates(position);
-          if (alertActive) handleAlertFix(position);
+          // Android: the native StationAlertService handles proximity checks and
+          // notifications independently; handleAlertFix is iOS-only here.
+          if (alertActive && Platform.OS !== 'android') handleAlertFix(position);
         },
         error => { console.log('Location watch error:', error); },
         {
@@ -783,6 +825,9 @@ const handleSetAlert = async (route) => {
     alertRouteRef.current = null;
     setAlertActive(false);
     setActiveRoute(null);
+    if (Platform.OS === 'android' && NativeModules.StationAlert) {
+      NativeModules.StationAlert.stopAlert();
+    }
     Alert.alert('Alerts Stopped', 'Station tracking alerts have been stopped.');
   };
 
