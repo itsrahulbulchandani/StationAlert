@@ -15,11 +15,19 @@ module.exports = {
       },
     },
     // react-native-maps is used only on iOS (Apple Maps, via JourneyMap.ios.js).
-    // Android uses the offline SVG map, so we drop the Google Maps native SDK
-    // from the Android build entirely — no Play Services Maps, no API key.
+    // Android uses the offline MapLibre map, so we drop the Google Maps native
+    // SDK from the Android build entirely — no Play Services Maps, no API key.
     'react-native-maps': {
       platforms: {
         android: null,
+      },
+    },
+    // MapLibre powers the Android offline map only (JourneyMap.android.js →
+    // OfflineMetroMap). iOS uses Apple Maps, so keep the MapLibre native SDK out
+    // of the iOS build (don't add it to the Pods) by disabling iOS autolinking.
+    '@maplibre/maplibre-react-native': {
+      platforms: {
+        ios: null,
       },
     },
   },

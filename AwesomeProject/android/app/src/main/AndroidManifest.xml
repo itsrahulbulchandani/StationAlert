@@ -40,5 +40,26 @@
       <meta-data
         android:name="com.google.android.gms.ads.APPLICATION_ID"
         android:value="ca-app-pub-1713281088911988~3315629324" />
+
+      <!-- react-native-push-notification (local notifications only — no FCM
+           service, so no firebase-messaging dependency is required). These
+           receivers are needed for notification actions, scheduled alerts and
+           re-scheduling after reboot. -->
+      <meta-data
+        android:name="com.dieam.reactnativepushnotification.notification_foreground"
+        android:value="false" />
+      <meta-data
+        android:name="com.dieam.reactnativepushnotification.notification_color"
+        android:resource="@android:color/white" />
+
+      <receiver android:name="com.dieam.reactnativepushnotification.modules.RNPushNotificationActions" />
+      <receiver android:name="com.dieam.reactnativepushnotification.modules.RNPushNotificationPublisher" />
+      <receiver
+        android:name="com.dieam.reactnativepushnotification.modules.RNPushNotificationBootEventReceiver"
+        android:exported="false">
+        <intent-filter>
+          <action android:name="android.intent.action.BOOT_COMPLETED" />
+        </intent-filter>
+      </receiver>
     </application>
 </manifest>

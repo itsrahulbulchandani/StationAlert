@@ -24,6 +24,7 @@ import {
 } from 'react-native-permissions';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import PushNotificationIOS from '@react-native-community/push-notification-ios';
+import PushNotification from 'react-native-push-notification';
 import Geolocation from '@react-native-community/geolocation';
 import {requestTrackingPermission} from 'react-native-tracking-transparency';
 import {AdBanner} from './src/components/AdBanner';
@@ -285,7 +286,41 @@ function AppContent({
         console.error('Error in iOS notification initialization:', error);
       }
     }
-    
+
+    // Android notification setup. iOS keeps using PushNotificationIOS above; on
+    // Android we use react-native-push-notification to post a real system
+    // notification — Alert.alert only shows while the app is foregrounded and
+    // never reaches the notification tray, which is exactly when a station
+    // alert needs to fire.
+    if (Platform.OS === 'android') {
+      try {
+        PushNotification.configure({
+          onNotification: notification => {
+            console.log('Android notification:', notification);
+          },
+          // POST_NOTIFICATIONS is requested via requestNotificationPermission()
+          // (react-native-permissions); don't let the library prompt as well.
+          requestPermissions: false,
+          popInitialNotification: true,
+        });
+
+        // A channel is mandatory on Android 8+ (API 26); without it the
+        // notification is dropped silently.
+        PushNotification.createChannel(
+          {
+            channelId: 'station-alerts',
+            channelName: 'Station Alerts',
+            channelDescription: 'Alerts as you approach your station',
+            importance: 4, // HIGH — shows as a heads-up notification
+            vibrate: true,
+          },
+          created => console.log(`Station-alerts channel created: ${created}`),
+        );
+      } catch (error) {
+        console.error('Error in Android notification initialization:', error);
+      }
+    }
+
     // App state change listener for background/foreground transitions
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
@@ -622,14 +657,24 @@ const handleSetAlert = async (route) => {
     const nextStationName = stationsFromKeys[nextStationId];
 
     if (!nextStation) {
-      PushNotificationIOS.presentLocalNotification({
-        alertBody: `Next station not found:${nextStationName}`,
-        alertTitle: 'Next Stop: Delhi Metro',
-        soundName: 'default',
-        category: 'STATION_ALERT',
-        userInfo: { station: nextStationName, timestamp: new Date().toISOString(), appState: AppState.currentState },
-        applicationIconBadgeNumber: 1,
-      });
+      if (Platform.OS === 'ios') {
+        PushNotificationIOS.presentLocalNotification({
+          alertBody: `Next station not found:${nextStationName}`,
+          alertTitle: 'Next Stop: Delhi Metro',
+          soundName: 'default',
+          category: 'STATION_ALERT',
+          userInfo: { station: nextStationName, timestamp: new Date().toISOString(), appState: AppState.currentState },
+          applicationIconBadgeNumber: 1,
+        });
+      } else {
+        PushNotification.localNotification({
+          channelId: 'station-alerts',
+          title: 'Next Stop: Delhi Metro',
+          message: `Next station not found:${nextStationName}`,
+          playSound: true,
+          soundName: 'default',
+        });
+      }
       return;
     }
 
@@ -654,7 +699,16 @@ const handleSetAlert = async (route) => {
           console.error('Error sending iOS notification:', error);
         }
       } else {
-        Alert.alert('Next Stop: Delhi Metro', `You are approaching ${nextStationName}!`);
+        PushNotification.localNotification({
+          channelId: 'station-alerts',
+          title: 'Next Stop: Delhi Metro',
+          message: `You are approaching ${nextStationName}!`,
+          playSound: true,
+          soundName: 'default',
+          vibrate: true,
+          importance: 'high',
+          priority: 'high',
+        });
       }
 
       currentIdx++;

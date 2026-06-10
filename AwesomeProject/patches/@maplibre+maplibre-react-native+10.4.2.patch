@@ -1,0 +1,155 @@
+diff --git a/node_modules/@maplibre/maplibre-react-native/android/src/main/java/org/maplibre/reactnative/components/camera/MLRNCamera.java b/node_modules/@maplibre/maplibre-react-native/android/src/main/java/org/maplibre/reactnative/components/camera/MLRNCamera.java
+index a10a66c..4ebe665 100644
+--- a/node_modules/@maplibre/maplibre-react-native/android/src/main/java/org/maplibre/reactnative/components/camera/MLRNCamera.java
++++ b/node_modules/@maplibre/maplibre-react-native/android/src/main/java/org/maplibre/reactnative/components/camera/MLRNCamera.java
+@@ -121,13 +121,24 @@ public class MLRNCamera extends AbstractMapFeature {
+ 
+     @Override
+     public void addToMap(MLRNMapView mapView) {
++        // On the RN New Architecture the interop layer re-adds the MapView's
++        // children far more often than Paper did (e.g. after JS commits that
++        // only changed sibling sources/layers). Re-applying defaultStop and
++        // re-running the last camera stop on such re-attaches visibly snaps
++        // the map away from wherever the user left it, so only do the camera
++        // positioning on the FIRST attach. Zoom/bounds limits are idempotent
++        // and safe to re-apply.
++        boolean firstAttach = (mMapView == null);
+         mMapView = mapView;
+ 
+-        setInitialCamera();
++        if (firstAttach) {
++            setInitialCamera();
++        }
++
+         updateMaxMinZoomLevel();
+         updateMaxBounds();
+ 
+-        if (mCameraStop != null) {
++        if (firstAttach && mCameraStop != null) {
+             updateCamera();
+         }
+ 
+@@ -141,6 +152,16 @@ public class MLRNCamera extends AbstractMapFeature {
+ 
+     }
+ 
++    private String mLastStopNonce;
++
++    public String getLastStopNonce() {
++        return mLastStopNonce;
++    }
++
++    public void setLastStopNonce(String nonce) {
++        mLastStopNonce = nonce;
++    }
++
+     public void setStop(CameraStop stop) {
+         mCameraStop = stop;
+         mCameraStop.setCallback(mCameraCallback);
+diff --git a/node_modules/@maplibre/maplibre-react-native/android/src/main/java/org/maplibre/reactnative/components/camera/MLRNCameraManager.java b/node_modules/@maplibre/maplibre-react-native/android/src/main/java/org/maplibre/reactnative/components/camera/MLRNCameraManager.java
+index 3f0b172..eb26454 100644
+--- a/node_modules/@maplibre/maplibre-react-native/android/src/main/java/org/maplibre/reactnative/components/camera/MLRNCameraManager.java
++++ b/node_modules/@maplibre/maplibre-react-native/android/src/main/java/org/maplibre/reactnative/components/camera/MLRNCameraManager.java
+@@ -40,6 +40,18 @@ public class MLRNCameraManager extends AbstractEventEmitter<MLRNCamera> {
+     @ReactProp(name="stop")
+     public void setStop(MLRNCamera camera, ReadableMap map) {
+         if (map != null) {
++            // The RN New Architecture interop layer re-delivers cached props
++            // (including the last `stop` sent via setNativeProps) whenever the
++            // view is updated by an unrelated commit — replaying a stale camera
++            // move. Genuine calls from Camera.tsx's setCamera() carry a fresh
++            // __nonce, so a repeated nonce identifies a replay and is ignored.
++            if (map.hasKey("__nonce")) {
++                String nonce = String.valueOf(map.getDouble("__nonce"));
++                if (nonce.equals(camera.getLastStopNonce())) {
++                    return;
++                }
++                camera.setLastStopNonce(nonce);
++            }
+             CameraStop stop = CameraStop.fromReadableMap(mContext, map, null);
+             camera.setStop(stop);
+         }
+diff --git a/node_modules/@maplibre/maplibre-react-native/lib/commonjs/components/Camera.js b/node_modules/@maplibre/maplibre-react-native/lib/commonjs/components/Camera.js
+index 6666045..d320844 100644
+--- a/node_modules/@maplibre/maplibre-react-native/lib/commonjs/components/Camera.js
++++ b/node_modules/@maplibre/maplibre-react-native/lib/commonjs/components/Camera.js
+@@ -106,15 +106,21 @@ const Camera = exports.Camera = /*#__PURE__*/(0, _react.memo)(/*#__PURE__*/(0, _
+ }, ref) => {
+   const nativeCameraRef = (0, _useNativeRef.useNativeRef)();
+   const setCamera = (config = {}) => {
++    // Tag every genuine camera move with a unique nonce so the Android side
++    // can tell it apart from the New Architecture interop layer re-delivering
++    // the cached `stop` prop on unrelated commits (which would replay a stale
++    // camera move). See MLRNCameraManager.setStop.
+     if ("stops" in config) {
+       nativeCameraRef.current?.setNativeProps({
+         stop: {
+-          stops: config.stops.map(stopItem => makeNativeCameraStop(stopItem)).filter(stopItem => !!stopItem)
++          stops: config.stops.map(stopItem => makeNativeCameraStop(stopItem)).filter(stopItem => !!stopItem),
++          __nonce: Date.now() + Math.random()
+         }
+       });
+     } else {
+       const stop = makeNativeCameraStop(config);
+       if (stop) {
++        stop.__nonce = Date.now() + Math.random();
+         nativeCameraRef.current?.setNativeProps({
+           stop
+         });
+diff --git a/node_modules/@maplibre/maplibre-react-native/lib/module/components/Camera.js b/node_modules/@maplibre/maplibre-react-native/lib/module/components/Camera.js
+index 697c942..a53a4c2 100644
+--- a/node_modules/@maplibre/maplibre-react-native/lib/module/components/Camera.js
++++ b/node_modules/@maplibre/maplibre-react-native/lib/module/components/Camera.js
+@@ -101,15 +101,21 @@ export const Camera = /*#__PURE__*/memo(/*#__PURE__*/forwardRef(({
+ }, ref) => {
+   const nativeCameraRef = useNativeRef();
+   const setCamera = (config = {}) => {
++    // Tag every genuine camera move with a unique nonce so the Android side
++    // can tell it apart from the New Architecture interop layer re-delivering
++    // the cached `stop` prop on unrelated commits (which would replay a stale
++    // camera move). See MLRNCameraManager.setStop.
+     if ("stops" in config) {
+       nativeCameraRef.current?.setNativeProps({
+         stop: {
+-          stops: config.stops.map(stopItem => makeNativeCameraStop(stopItem)).filter(stopItem => !!stopItem)
++          stops: config.stops.map(stopItem => makeNativeCameraStop(stopItem)).filter(stopItem => !!stopItem),
++          __nonce: Date.now() + Math.random()
+         }
+       });
+     } else {
+       const stop = makeNativeCameraStop(config);
+       if (stop) {
++        stop.__nonce = Date.now() + Math.random();
+         nativeCameraRef.current?.setNativeProps({
+           stop
+         });
+diff --git a/node_modules/@maplibre/maplibre-react-native/src/components/Camera.tsx b/node_modules/@maplibre/maplibre-react-native/src/components/Camera.tsx
+index c988461..32acd03 100644
+--- a/node_modules/@maplibre/maplibre-react-native/src/components/Camera.tsx
++++ b/node_modules/@maplibre/maplibre-react-native/src/components/Camera.tsx
+@@ -287,18 +287,25 @@ export const Camera = memo(
+       const nativeCameraRef = useNativeRef<NativeCameraProps>();
+ 
+       const setCamera = (config: CameraStop | CameraStops = {}): void => {
++        // Tag every genuine camera move with a unique nonce so the Android
++        // side can tell it apart from the New Architecture interop layer
++        // re-delivering the cached `stop` prop on unrelated commits (which
++        // would replay a stale camera move). See MLRNCameraManager.setStop.
+         if ("stops" in config) {
+           nativeCameraRef.current?.setNativeProps({
+             stop: {
+               stops: config.stops
+                 .map((stopItem) => makeNativeCameraStop(stopItem))
+                 .filter((stopItem) => !!stopItem),
++              __nonce: Date.now() + Math.random(),
+             },
+           });
+         } else {
+           const stop = makeNativeCameraStop(config);
+ 
+           if (stop) {
++            (stop as Record<string, unknown>).__nonce =
++              Date.now() + Math.random();
+             nativeCameraRef.current?.setNativeProps({ stop });
+           }
+         }

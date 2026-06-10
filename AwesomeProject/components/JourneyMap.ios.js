@@ -6,6 +6,7 @@ import React, {
 } from 'react';
 import {View, Text, StyleSheet} from 'react-native';
 import MapView, {Marker, Polyline, Callout} from 'react-native-maps';
+import {buildRouteSegments} from '../utilities/routeGeometry';
 
 // iOS journey map — Apple Maps (the default provider on iOS) with the metro
 // network drawn on top, matching the app's original behaviour. Android uses the
@@ -230,26 +231,15 @@ const JourneyMap = forwardRef(
           );
         })}
 
-        {/* Highlighted journey casing + line */}
+        {/* Highlighted journey casing + line — traces the real track geometry */}
         {showRoute &&
           (() => {
-            const path = selectedRoute.path || [];
-            const colorPath = selectedRoute.colorPath || [];
-            const segs = [];
-            let cur = null;
-            path.forEach((id, i) => {
-              const st = stations.find(s => s.id == id);
-              if (!st) return;
-              const color = getLineInfo(colorPath[i]).color;
-              if (!cur || cur.color !== color) {
-                cur = {color, coords: []};
-                if (segs.length) {
-                  cur.coords.push(segs[segs.length - 1].coords.slice(-1)[0]);
-                }
-                segs.push(cur);
-              }
-              cur.coords.push(st.coords);
-            });
+            const segs = buildRouteSegments(
+              selectedRoute,
+              stations,
+              shapes,
+              getLineInfo,
+            );
             return segs.flatMap((seg, i) => [
               <Polyline
                 key={`rcase-${i}`}
