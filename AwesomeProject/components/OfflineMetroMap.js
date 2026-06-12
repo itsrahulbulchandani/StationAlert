@@ -375,10 +375,7 @@ const OfflineMetroMap = forwardRef(
       },
       centerOn: coord => {
         if (coord && cameraRef.current)
-          cameraRef.current.setCamera({
-            centerCoordinate: lngLat(coord),
-            animationDuration: 600,
-          });
+          cameraRef.current.moveTo(lngLat(coord), 600);
       },
       // Keep the current zoom, just recentre — used for live-tracking follow.
       followTo: coord => {
