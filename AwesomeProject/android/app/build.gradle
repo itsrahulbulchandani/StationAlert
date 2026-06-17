@@ -82,7 +82,7 @@ android {
         applicationId "com.awesomeproject.rbc"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 3
+        versionCode 4
         versionName "1.0"
     }
     signingConfigs {
@@ -94,9 +94,9 @@ android {
         }
         release {
             storeFile file('nextstop-upload-key.keystore')
-            storePassword 'Harerama0670'
+            storePassword '$ecur!tyy@Metro'
             keyAlias 'nextstop-key'
-            keyPassword 'Harerama0670'
+            keyPassword '$ecur!tyy@Metro'
         }
     }
     buildTypes {

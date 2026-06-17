@@ -93,7 +93,7 @@ function App() {
           Geolocation.setRNConfiguration({
             skipPermissionRequests: false,
             authorizationLevel: 'always',
-            locationProvider: 'auto',
+            locationProvider: Platform.OS === 'android' ? 'playServices' : 'auto',
             enableBackgroundLocationUpdates: true,
             pauseLocationUpdatesAutomatically: false,
           });
@@ -195,7 +195,7 @@ function App() {
       Geolocation.setRNConfiguration({
         skipPermissionRequests: false,
         authorizationLevel: 'always',
-        locationProvider: 'auto',
+        locationProvider: Platform.OS === 'android' ? 'playServices' : 'auto',
         enableBackgroundLocationUpdates: true,
         pauseLocationUpdatesAutomatically: false,
       });

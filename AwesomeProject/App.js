@@ -11,6 +11,8 @@ import {
   Dimensions,
   NativeModules,
   NativeEventEmitter,
+  Animated,
+  Easing,
 } from 'react-native';
 import {SafeAreaProvider, useSafeAreaInsets, initialWindowMetrics} from 'react-native-safe-area-context';
 import {
@@ -50,9 +52,20 @@ import {TutorialProvider, useTutorial} from './src/context/TutorialContext';
 
 export const TabContext = createContext();
 
+const TABS = [
+  { key: 'search route', label: 'Home', icon: 'home', iconOutline: 'home-outline' },
+  { key: 'route', label: 'Map', icon: 'map', iconOutline: 'map-outline' },
+];
+
+const TAB_ORDER = TABS.map(tab => tab.key);
+
 // Add screen dimension utilities
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 const scale = SCREEN_WIDTH / 375; // Using 375 as base width (iPhone X)
+const TAB_BAR_SIDE_MARGIN = 16;
+const TAB_BAR_INSET = 6;
+const TAB_SLOT_WIDTH =
+  (SCREEN_WIDTH - TAB_BAR_SIDE_MARGIN * 2 - TAB_BAR_INSET * 2) / TABS.length;
 
 const normalize = size => {
   const newSize = size * scale;
@@ -229,6 +242,7 @@ function AppContent({
   const [adError, setAdError] = useState(false);
   const [activeRoute, setActiveRoute] = useState(null);
   const watchId = useRef(null);
+  const locationWatchAlertShown = useRef(false);
   // Alert-notification state for the shared location watcher (refs so the single
   // persistent watcher can read/advance them across renders).
   const alertRouteRef = useRef(null);
@@ -253,6 +267,25 @@ function AppContent({
   const {theme} = useTheme();
   const { registerRef, checkAndStartTutorial } = useTutorial();
   const mapTabRef = useRef(null);
+  const tabBarProgress = useRef(
+    new Animated.Value(Math.max(0, TAB_ORDER.indexOf(activeTab))),
+  ).current;
+  // Home-screen visibility (1 = Home opaque & on top, 0 = faded out to reveal the
+  // map underneath). ONLY the Home screen's opacity is ever animated — the map is
+  // never alpha-animated (see getTabScreenStyle), which is what kills the black
+  // flash on Android.
+  const homeVisible = useRef(
+    new Animated.Value(activeTab === 'search route' ? 1 : 0),
+  ).current;
+  // Subtle "fade-through" scale: Home grows from 0.96→1 as it fades in (and
+  // shrinks as it fades out), so the switch reads as motion, not just a dissolve.
+  const homeScale = useRef(
+    homeVisible.interpolate({inputRange: [0, 1], outputRange: [0.96, 1]}),
+  ).current;
+  // True only while a tab switch is animating. Drives renderToHardwareTextureAndroid
+  // so the fading screen (and its card shadows) flatten into ONE hardware layer and
+  // fade uniformly — otherwise Android's elevation shadows linger, then pop.
+  const [isSwitching, setIsSwitching] = useState(false);
 
   // Handle splash screen timeout
   // useEffect(() => {
@@ -260,8 +293,6 @@ function AppContent({
   //     // Splash screen will handle its own timeout via onFinish callback
   //   }
   // }, [showSplash]);
-
-  console.log("alertActive", alertActive)
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -349,7 +380,7 @@ function AppContent({
           Geolocation.setRNConfiguration({
             skipPermissionRequests: false,
             authorizationLevel: 'always',
-            locationProvider: 'auto',
+            locationProvider: Platform.OS === 'android' ? 'playServices' : 'auto',
             enableBackgroundLocationUpdates: true,
             pauseLocationUpdatesAutomatically: false,
           });
@@ -628,45 +659,75 @@ const handleSetAlert = async (route) => {
   // Get current location once to seed the starting station, then flip the state
   // flags. The single shared location watcher (effect below) does the actual
   // watching and fires the approach notifications via handleAlertFix.
+  // Ensure the Fused (Play Services) provider is selected before the seed fix.
+  // The effect below only calls setRNConfiguration once alerts are active, so
+  // this first request would otherwise use the default 'auto' provider and time
+  // out on Android. Skip when an alert is already running so we don't downgrade
+  // the active background ('always') session.
+  if (Platform.OS === 'android' && !alertActive) {
+    Geolocation.setRNConfiguration({
+      skipPermissionRequests: false,
+      authorizationLevel: 'whenInUse',
+      locationProvider: 'playServices',
+    });
+  }
+
+  const handleSeedFix = (position) => {
+    const nearestStationIndex = findNearestUpcomingStation(position, route.path);
+
+    if (nearestStationIndex === -1) {
+      Alert.alert('Alert', 'Unable to determine your position relative to the route.');
+      return;
+    }
+    // If we're at or past the last station
+    if (nearestStationIndex >= route.path.length - 1) {
+      Alert.alert('Alert', 'You have already passed all stations on this route.');
+      return;
+    }
+
+    alertIdxRef.current = nearestStationIndex;
+    setCurrentCoordinates(position);
+    setAlertActive(true);
+    setLiveTracking(true);
+    Alert.alert('Alert Set', 'You will be notified as you approach the next station.');
+
+    // Android: hand off to the native foreground service, which keeps running
+    // even when the app is backgrounded or the screen is off.
+    if (Platform.OS === 'android' && NativeModules.StationAlert) {
+      const upcoming = route.path
+        .slice(nearestStationIndex + 1)
+        .map(id => {
+          const s = stations[id];
+          if (!s) return null;
+          return {name: stationsFromKeys[id] || '', lat: s.coords.latitude, lon: s.coords.longitude};
+        })
+        .filter(Boolean);
+      NativeModules.StationAlert.startAlert(upcoming);
+    }
+  };
+
   Geolocation.getCurrentPosition(
-    (position) => {
-      const nearestStationIndex = findNearestUpcomingStation(position, route.path);
-
-      if (nearestStationIndex === -1) {
-        Alert.alert('Alert', 'Unable to determine your position relative to the route.');
-        return;
-      }
-      // If we're at or past the last station
-      if (nearestStationIndex >= route.path.length - 1) {
-        Alert.alert('Alert', 'You have already passed all stations on this route.');
-        return;
-      }
-
-      alertIdxRef.current = nearestStationIndex;
-      setCurrentCoordinates(position);
-      setAlertActive(true);
-      setLiveTracking(true);
-      Alert.alert('Alert Set', 'You will be notified as you approach the next station.');
-
-      // Android: hand off to the native foreground service, which keeps running
-      // even when the app is backgrounded or the screen is off.
-      if (Platform.OS === 'android' && NativeModules.StationAlert) {
-        const upcoming = route.path
-          .slice(nearestStationIndex + 1)
-          .map(id => {
-            const s = stations[id];
-            if (!s) return null;
-            return {name: stationsFromKeys[id] || '', lat: s.coords.latitude, lon: s.coords.longitude};
-          })
-          .filter(Boolean);
-        NativeModules.StationAlert.startAlert(upcoming);
-      }
-    },
+    handleSeedFix,
     (error) => {
-      console.log('Location error:', error);
-      setAlertActive(false);
+      console.log('High accuracy failed (alert seed):', error);
+      // Timed out or position unavailable: fall back to a low-accuracy
+      // (network/fused) fix, which returns quickly and accepts an older cache.
+      if (error.code === 2 || error.code === 3) {
+        Geolocation.getCurrentPosition(
+          handleSeedFix,
+          (fallbackError) => {
+            console.log('Location error:', fallbackError);
+            Alert.alert('Alert', 'Unable to determine your location.');
+            setAlertActive(false);
+          },
+          { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 },
+        );
+      } else {
+        Alert.alert('Alert', 'Unable to determine your location.');
+        setAlertActive(false);
+      }
     },
-    { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 },
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 },
   );
 };
 
@@ -783,7 +844,7 @@ const handleSetAlert = async (route) => {
         Geolocation.setRNConfiguration({
           skipPermissionRequests: false,
           authorizationLevel: 'always',
-          locationProvider: 'auto',
+          locationProvider: Platform.OS === 'android' ? 'playServices' : 'auto',
           enableBackgroundLocationUpdates: true,
           pauseLocationUpdatesAutomatically: false,
           showsBackgroundLocationIndicator: true,
@@ -793,12 +854,19 @@ const handleSetAlert = async (route) => {
       if (cancelled) return;
       id = Geolocation.watchPosition(
         position => {
+          locationWatchAlertShown.current = false;
           setCurrentCoordinates(position);
           // Android: the native StationAlertService handles proximity checks and
           // notifications independently; handleAlertFix is iOS-only here.
           if (alertActive && Platform.OS !== 'android') handleAlertFix(position);
         },
-        error => { console.log('Location watch error:', error); },
+        error => { 
+          console.log('Location watch error:', error); 
+          if ((error.code === 2 || error.code === 3) && !locationWatchAlertShown.current) {
+            locationWatchAlertShown.current = true;
+            Alert.alert('Unable to get location in time.');
+          }
+        },
         {
           enableHighAccuracy: true,
           distanceFilter: 10,
@@ -831,8 +899,8 @@ const handleSetAlert = async (route) => {
     Alert.alert('Alerts Stopped', 'Station tracking alerts have been stopped.');
   };
 
-  const renderScreen = () => {
-    switch (activeTab) {
+  const renderScreen = tabKey => {
+    switch (tabKey) {
       case 'search route':
         return <SearchRouteScreen />;
       case 'route':
@@ -842,17 +910,74 @@ const handleSetAlert = async (route) => {
     }
   };
 
-  const TABS = [
-    { key: 'search route', label: 'Home', icon: 'home', iconOutline: 'home-outline' },
-    { key: 'route', label: 'Map', icon: 'map', iconOutline: 'map-outline' },
-  ];
+  const handleTabPress = tabKey => {
+    // Interruptible: tapping mid-transition just re-targets the animation
+    // (Animated retargets from the current value), so taps are never dropped.
+    if (tabKey === activeTab) return;
+
+    const nextIndex = TAB_ORDER.indexOf(tabKey);
+    if (nextIndex === -1) return;
+
+    setActiveTab(tabKey);
+    setIsSwitching(true);
+
+    Animated.parallel([
+      // Fade ONLY the Home screen. Going to the map fades Home out (revealing the
+      // already-opaque map underneath); coming back fades Home in over it.
+      Animated.timing(homeVisible, {
+        toValue: tabKey === 'search route' ? 1 : 0,
+        duration: 260,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.spring(tabBarProgress, {
+        toValue: nextIndex,
+        stiffness: 260,
+        damping: 30,
+        mass: 0.9,
+        useNativeDriver: true,
+      }),
+    ]).start(({finished}) => {
+      // Only the final (non-interrupted) animation clears the flag, so the
+      // hardware layer stays on through a rapid sequence of switches.
+      if (finished) setIsSwitching(false);
+    });
+  };
+
+  // The map (RouteMapScreen) is a native GL TextureView. Animating its opacity
+  // makes Android composite the opaque texture over black — that's the black
+  // flash when toggling tabs. So the map is NEVER alpha-animated: it stays fully
+  // opaque on the bottom layer (zIndex 1), and the Home screen (plain RN views,
+  // opaque LinearGradient bg) fades in/out on top of it (zIndex 2). No restacking
+  // or transforms on the surface either, both of which also flash it.
+  const getTabScreenStyle = tabKey => {
+    if (tabKey === 'route') {
+      return styles.mapScreen;
+    }
+    return [
+      styles.homeScreen,
+      {opacity: homeVisible, transform: [{scale: homeScale}]},
+    ];
+  };
+
+  const activeTabIndicatorStyle = {
+    width: TAB_SLOT_WIDTH,
+    transform: [
+      {
+        translateX: tabBarProgress.interpolate({
+          inputRange: [0, TABS.length - 1],
+          outputRange: [0, TAB_SLOT_WIDTH * (TABS.length - 1)],
+        }),
+      },
+    ],
+  };
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
     <TabContext.Provider
       value={{
         activeTab,
-        setActiveTab,
+        setActiveTab: handleTabPress,
         selectedRoute,
         setSelectedRoute,
         routesFound,
@@ -886,25 +1011,49 @@ const handleSetAlert = async (route) => {
           <SplashScreen onFinish={() => { setShowSplash(false); checkAndStartTutorial(); }} />
         ) : (
           <>
-            <View
+            <Animated.View
               style={[styles.content, {backgroundColor: theme.softBackground}]}>
-              {renderScreen()}
-            </View>
+              {TABS.map(tab => (
+                <Animated.View
+                  key={tab.key}
+                  pointerEvents={tab.key === activeTab ? 'auto' : 'none'}
+                  // Flatten Home into a single hardware layer while switching, so
+                  // its card shadows fade with it instead of lingering. Only while
+                  // animating, and only Home (the map must not be rasterized).
+                  renderToHardwareTextureAndroid={tab.key === 'search route' && isSwitching}
+                  shouldRasterizeIOS={tab.key === 'search route' && isSwitching}
+                  style={[styles.tabScreen, getTabScreenStyle(tab.key)]}>
+                  {renderScreen(tab.key)}
+                </Animated.View>
+              ))}
+            </Animated.View>
             {!adError && activeTab !== 'search route' && <></>}
 
             <AlertOverlay
               isActive={alertActive}
               onStopAlerts={handleStopAlerts}
               route={activeRoute}
-              onOpen={() => setActiveTab('route')}
+              onOpen={() => handleTabPress('route')}
             />
 
             {/* Bottom Tab Bar */}
             <View style={[styles.bottomTabContainer, {paddingBottom: Math.max(insets?.bottom ?? 0, 8)}]}>
               <View style={styles.bottomTabBar}>
-                {TABS.map(tab => {
+                <Animated.View style={[styles.activeTabIndicator, activeTabIndicatorStyle]} />
+                {TABS.map((tab, index) => {
                   const active = activeTab === tab.key;
                   const tabRef = tab.key === 'route' ? mapTabRef : null;
+                  const tabContentStyle = {
+                    transform: [
+                      {
+                        scale: tabBarProgress.interpolate({
+                          inputRange: [index - 1, index, index + 1],
+                          outputRange: [1, 1.05, 1],
+                          extrapolate: 'clamp',
+                        }),
+                      },
+                    ],
+                  };
                   if (tabRef) registerRef('mapTab', tabRef);
                   return (
                     <TouchableOpacity
@@ -912,15 +1061,15 @@ const handleSetAlert = async (route) => {
                       ref={tabRef}
                       style={styles.bottomTab}
                       activeOpacity={0.8}
-                      onPress={() => setActiveTab(tab.key)}>
-                      <View style={[styles.tabPill, active && styles.tabPillActive]}>
+                      onPress={() => handleTabPress(tab.key)}>
+                      <Animated.View style={[styles.tabPill, tabContentStyle]}>
                         <Icon
                           name={active ? tab.icon : tab.iconOutline}
                           size={22}
                           color={active ? '#E5252B' : '#9A9A9A'}
                         />
                         {active && <Text style={styles.tabPillLabel}>{tab.label}</Text>}
-                      </View>
+                      </Animated.View>
                     </TouchableOpacity>
                   );
                 })}
@@ -1121,7 +1270,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 16,
+    paddingHorizontal: TAB_BAR_SIDE_MARGIN,
     paddingTop: 8,
   },
   bottomTabBar: {
@@ -1137,8 +1286,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 16,
     elevation: 10,
+    position: 'relative',
   },
-  bottomTab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  activeTabIndicator: {
+    position: 'absolute',
+    left: TAB_BAR_INSET,
+    top: 10,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FDECEC',
+  },
+  bottomTab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
   tabPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1147,7 +1310,6 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     paddingHorizontal: 16,
   },
-  tabPillActive: { backgroundColor: '#FDECEC' },
   tabPillLabel: { fontSize: 14, color: '#E5252B', fontWeight: '700', marginLeft: 8 },
   // Floating navigation bar styles
   floatingNavContainer: {
@@ -1208,9 +1370,20 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    position: 'relative',
+    overflow: 'hidden',
     zIndex: -1,
     // paddingTop: normalize(8),
   },
+  tabScreen: {
+    ...StyleSheet.absoluteFillObject,
+    flex: 1,
+  },
+  // Fixed layering: the map sits underneath (always opaque), Home fades on top.
+  // These zIndexes never change at runtime — reordering the native surface
+  // mid-transition is itself a source of flicker, so it's kept constant.
+  mapScreen: { zIndex: 1 },
+  homeScreen: { zIndex: 2 },
 });
 
 export default App;

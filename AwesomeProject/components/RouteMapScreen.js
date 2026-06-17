@@ -8,6 +8,9 @@ import {
   PermissionsAndroid,
   Alert,
   Modal,
+  ActivityIndicator,
+  Animated,
+  Easing,
 } from 'react-native';
 import RNFS from 'react-native-fs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -117,6 +120,7 @@ const RouteMapScreen = () => {
   const [showMarkers, setShowMarkers] = useState(false);
   const [markerData, setMarkerData] = useState([]);
   const [currentZoom, setCurrentZoom] = useState(10);
+  const [locationLoading, setLocationLoading] = useState(false);
   const { selectedRoute=[], setSelectedRoute, alertActive, liveTracking, setLiveTracking, handleSetAlert, handleStopAlerts, currentCoordinates, setActiveTab, setRoutesFound, setRouteSelectionOpened } = useContext(TabContext);
   const [currentLocation, setCurrentLocation] = useState(null);
   // Only default to the Route view when a route actually exists; otherwise the
@@ -125,6 +129,10 @@ const RouteMapScreen = () => {
     () => (selectedRoute?.path?.length ? 'route' : 'all'),
   ); // 'route' | 'all'
   const [journeyView, setJourneyView] = useState('map'); // 'map' | 'line'
+  // Cross-fade opacity for the Line-view overlay. The native map stays mounted
+  // underneath (see render) so switching map<->line never tears down / rebuilds
+  // the GL surface — that teardown was the source of the jitter on the switch.
+  const lineOverlay = useRef(new Animated.Value(0)).current;
   const [showLegend, setShowLegend] = useState(false);
   const [hiddenLines, setHiddenLines] = useState([]); // line color hexes hidden on map
   const mapRef = useRef(null);
@@ -199,6 +207,21 @@ const RouteMapScreen = () => {
     if (alertActive) setViewMode('route');
   }, [alertActive]);
 
+  // The Line view only applies when a route exists; fall back to the map if the
+  // route is cleared while it's open.
+  const showLine = journeyView === 'line' && hasRoute;
+
+  // Drive the Line-view cross-fade (native-driver opacity, so it stays on the UI
+  // thread and doesn't stutter even while JS is busy).
+  useEffect(() => {
+    Animated.timing(lineOverlay, {
+      toValue: showLine ? 1 : 0,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [showLine, lineOverlay]);
+
   const toggleLine = color => {
     const c = (color || '').toLowerCase();
     setHiddenLines(prev =>
@@ -242,8 +265,6 @@ const RouteMapScreen = () => {
       handleSetAlert && handleSetAlert(selectedRoute); // also turns live tracking on
     }
   };
-
-  console.log("currentZoom",isMaxZoom, currentZoom,scale)
 
   // const onPanGestureEvent = ({nativeEvent}) => {
   //   setTranslateX(lastTranslateX.current + nativeEvent.translationX);
@@ -442,8 +463,6 @@ const RouteMapScreen = () => {
   //   setScale(approximateScale.toFixed(2));
   // };
   
-  console.log("scale",scale)
-
   // Memoize stations to prevent unnecessary re-renders
   const memoizedStations = useMemo(() => {
     return stations;
@@ -489,57 +508,100 @@ const RouteMapScreen = () => {
 
   const [mapKey, setMapKey] = useState(0);
 
-  const getCurrentLocation = () => {
-    // Tapping locate re-arms auto-follow (the user explicitly wants to recenter).
+const getCurrentLocation = async () => {
+  if (locationLoading) return;
+
+  setLocationLoading(true);
+
+  try {
+    // Tapping locate re-arms auto-follow.
     followingRef.current = true;
+
     // If alerts are active, use the coordinates from alert tracking
     if (alertActive && tabContextRef.current?.currentCoordinates) {
-      const { latitude, longitude } = tabContextRef.current.currentCoordinates.coords;
-      console.log("Using coordinates from alert tracking:", { latitude, longitude });
-      
+      const { latitude, longitude } =
+        tabContextRef.current.currentCoordinates.coords;
+
       const newLocation = { latitude, longitude };
+
       setCurrentLocation(newLocation);
-      
-      if (mapRef.current) {
-        mapRef.current.centerOn({ latitude, longitude });
-      }
+      mapRef.current?.centerOn(newLocation);
+
+      setLocationLoading(false);
       return;
     }
 
-    // If alerts are not active or no tracking coordinates available, request new location
-    console.log("Getting current location...");
-    requestLocationPermission().then(hasPermission => {
-      console.log("Location permission:", hasPermission);
-      if (hasPermission) {
-        hasRequestedLocation.current = true;
-        Geolocation.getCurrentPosition(
-          position => {
-            const { latitude, longitude } = position.coords;
-            console.log("Got location:", { latitude, longitude });
-            const newLocation = { latitude, longitude };
-            
-            setCurrentLocation(newLocation);
-            
-            if (mapRef.current) {
-              mapRef.current.centerOn({
-                latitude: newLocation.latitude,
-                longitude: newLocation.longitude,
-              });
+    const hasPermission = await requestLocationPermission();
+
+    if (!hasPermission) {
+      setLocationLoading(false);
+      return;
+    }
+
+    hasRequestedLocation.current = true;
+
+    // Ensure the Fused (Play Services) provider is selected before the one-shot
+    // request. App.js only calls setRNConfiguration while alerts are active, so
+    // for a plain locate tap the provider would otherwise stay at the library
+    // default ('auto'), which is what was causing the GPS timeouts on Android.
+    if (Platform.OS === 'android') {
+      Geolocation.setRNConfiguration({
+        skipPermissionRequests: false,
+        authorizationLevel: 'whenInUse',
+        locationProvider: 'playServices',
+      });
+    }
+
+    const handleSuccess = position => {
+      const { latitude, longitude } = position.coords;
+
+      const newLocation = { latitude, longitude };
+
+      setCurrentLocation(newLocation);
+      mapRef.current?.centerOn(newLocation);
+
+      setLocationLoading(false);
+    };
+
+    Geolocation.getCurrentPosition(
+      handleSuccess,
+      error => {
+        console.log("High accuracy failed:", error);
+
+        if (error.code === 2 || error.code === 3) {
+          // High-accuracy GPS couldn't get a fresh fix in time. Fall back to a
+          // low-accuracy (network/fused) fix, which returns almost instantly and
+          // accepts a slightly older cached location.
+          Geolocation.getCurrentPosition(
+            handleSuccess,
+            fallbackError => {
+              console.log("Fallback location failed:", fallbackError);
+              hasRequestedLocation.current = false;
+              setLocationLoading(false);
+              Alert.alert("Unable to get location in time.");
+            },
+            {
+              enableHighAccuracy: false,
+              timeout: 15000,
+              maximumAge: 60000,
             }
-          },
-          error => {
-            console.log("Location error:", error);
-            hasRequestedLocation.current = false;
-          },
-          { 
-            enableHighAccuracy: true, 
-            timeout: 20000, 
-            maximumAge: 1000 
-          }
-        );
+          );
+        } else {
+          hasRequestedLocation.current = false;
+          setLocationLoading(false);
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 30000,
       }
-    });
-  };
+    );
+  } catch (e) {
+    console.log(e);
+    setLocationLoading(false);
+  }
+};
 
   // Function to get route coordinates
   const getRouteCoordinates = (routePath) => {
@@ -550,7 +612,6 @@ const RouteMapScreen = () => {
       return station ? station.coords : null;
     }).filter(coord => coord !== null);
 
-    console.log('Route coordinates:', coordinates);
     return coordinates.length > 0 ? coordinates : null;
   };
 
@@ -614,6 +675,7 @@ const RouteMapScreen = () => {
     setSelectedRoute([]);
     setViewMode('all');
     setHiddenLines([]);
+    setJourneyView('map');
   };
 
   const handleViewDetails = () => {
@@ -623,21 +685,6 @@ const RouteMapScreen = () => {
     }
     setActiveTab('search route');
   };
-
-  // Line view: the timeline journey screen, fed the live location from the
-  // shared watcher above so the blue dot moves station-to-station.
-  if (journeyView === 'line' && hasRoute) {
-    return (
-      <LiveJourney
-        item={selectedRoute}
-        embedded
-        liveCoords={currentLocation}
-        alertActive={alertActive}
-        onChangeView={setJourneyView}
-        onClose={() => setJourneyView('map')}
-      />
-    );
-  }
 
   return (
     <View style={styles.root}>
@@ -761,9 +808,19 @@ const RouteMapScreen = () => {
 
       {/* Right-side map controls */}
       <View style={styles.rightControls} pointerEvents="box-none">
-        <TouchableOpacity ref={locationBtnRef} style={styles.controlBtn} onPress={getCurrentLocation} activeOpacity={0.7}>
-          <Icon name="locate" size={22} color="#1A1A1A" />
-        </TouchableOpacity>
+<TouchableOpacity
+  ref={locationBtnRef}
+  style={styles.controlBtn}
+  onPress={getCurrentLocation}
+  activeOpacity={0.7}
+  disabled={locationLoading}
+>
+  {locationLoading ? (
+    <ActivityIndicator size="small" color="#1A1A1A" />
+  ) : (
+    <Icon name="locate" size={22} color="#1A1A1A" />
+  )}
+</TouchableOpacity>
         <TouchableOpacity style={styles.controlBtn} onPress={recenter} activeOpacity={0.7}>
           <Icon name="scan-outline" size={22} color="#1A1A1A" />
         </TouchableOpacity>
@@ -837,6 +894,25 @@ const RouteMapScreen = () => {
           </View>
         </View>
       </Modal>
+      {/* Line view (station-by-station timeline). Rendered as a cross-fading
+          overlay ON TOP of the still-mounted map rather than swapping it out, so
+          flipping map<->line never reloads the native GL surface. It's an opaque
+          full-screen view, so when faded in it fully covers the map underneath. */}
+      {hasRoute && (
+        <Animated.View
+          pointerEvents={showLine ? 'auto' : 'none'}
+          style={[StyleSheet.absoluteFill, styles.lineOverlay, {opacity: lineOverlay}]}>
+          <LiveJourney
+            item={selectedRoute}
+            embedded
+            liveCoords={currentLocation}
+            alertActive={alertActive}
+            onChangeView={setJourneyView}
+            onClose={() => setJourneyView('map')}
+          />
+        </Animated.View>
+      )}
+
       <SpotlightTutorial
         steps={MAP_TUTORIAL_STEPS}
         stepRefs={mapTutorialRefs}
@@ -856,6 +932,9 @@ const RouteMapScreen = () => {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#EAEAEA' },
+  // Sits above the map + its controls (zIndex 15-20) so the timeline fully
+  // covers them when active; ignored (pointerEvents none, opacity 0) otherwise.
+  lineOverlay: { zIndex: 25, backgroundColor: '#FAFAFA' },
   topSafe: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20 },
   headerBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

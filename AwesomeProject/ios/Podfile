@@ -47,5 +47,21 @@ target 'AwesomeProject' do
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = min_ios_version_supported
       end
     end
+
+    # Xcode 16+/26 clang miscompiles fmt's consteval format-string checks
+    # ("call to consteval function ... is not a constant expression"). fmt's
+    # FMT_USE_CONSTEVAL block in base.h is not guarded by #ifndef, so a -D flag
+    # can't override it; force the first branch true so it selects the
+    # consteval-off path. Re-applied here so it survives `pod install`.
+    fmt_base = File.join(__dir__, 'Pods', 'fmt', 'include', 'fmt', 'base.h')
+    if File.exist?(fmt_base)
+      contents = File.read(fmt_base)
+      original = "#if !defined(__cpp_lib_is_constant_evaluated)"
+      patched  = "#if 1 || !defined(__cpp_lib_is_constant_evaluated)"
+      if contents.include?(original)
+        File.write(fmt_base, contents.sub(original, patched))
+        Pod::UI.puts "[fmt] Disabled consteval for Xcode compatibility".green
+      end
+    end
   end
 end

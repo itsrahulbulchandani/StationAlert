@@ -9,10 +9,12 @@ import {StyleSheet, View} from 'react-native';
 import {
   Camera,
   CircleLayer,
+  FillLayer,
   LineLayer,
   MapView,
   ShapeSource,
   SymbolLayer,
+  VectorSource,
 } from '@maplibre/maplibre-react-native';
 import {buildRouteSegments} from '../utilities/routeGeometry';
 
@@ -33,11 +35,22 @@ import {buildRouteSegments} from '../utilities/routeGeometry';
 const BG = '#F4F0E6';
 
 // How far past the network edge the user may pan (degrees ≈ 111 km/°). Shared by
-// the camera pan constraint (maxBounds) and the background-grid extent.
-const PAN_MARGIN = 0.06;
+// the camera pan constraint (maxBounds) and the background-grid extent. Kept
+// generously wide so the allowed area is comfortably larger than the viewport at
+// the default zoom — otherwise maxBounds hard-clamps the camera almost every
+// frame and panning rubber-bands back instead of gliding with natural inertia.
+const PAN_MARGIN = 0.12;
 
-// Minimal, fully-offline style: flat background + local glyphs for labels. No
-// tile sources/sprite means MapLibre fetches nothing from the network.
+// Camera zoom limits. Shared by the <Camera> bounds and the zoomIn/zoomOut
+// buttons so the two never drift apart (buttons clamping wider than the camera
+// makes edge presses silently do nothing).
+const MIN_ZOOM = 10;
+const MAX_ZOOM = 14;
+
+// Minimal, fully-offline style: flat background + local glyphs for labels. The
+// Delhi street base (added as a <VectorSource> below) and the metro overlays
+// all read from bundled asset:// data, so MapLibre still fetches nothing from
+// the network. The background colour shows through as "land" behind the base.
 const OFFLINE_STYLE = {
   version: 8,
   glyphs: 'asset://glyphs/{fontstack}/{range}.pbf',
@@ -103,7 +116,7 @@ const OfflineMetroMap = forwardRef(
     ref,
   ) => {
     const cameraRef = useRef(null);
-    const zoomRef = useRef(10);
+    const zoomRef = useRef(MIN_ZOOM);
     const didFitRef = useRef(false);
 
     // Tap-a-station-to-show-its-name, like the iOS callout. Any station can be
@@ -156,13 +169,13 @@ const OfflineMetroMap = forwardRef(
     }, [shapes, stations]);
 
     // --- Background grid (graph-paper lines drawn behind everything) -------
-    // Evenly-spaced lat/lng lines spanning the network bounds (+ a small
-    // margin so the grid reaches the panned edges). Rendered first, so it
+    // Evenly-spaced lat/lng lines spanning the network bounds (+ extra
+    // margin so the grid reaches beyond the panned edges). Rendered first, so it
     // z-orders at the very back, under the metro lines and stations.
     const gridFC = useMemo(() => {
       if (!bounds) return {type: 'FeatureCollection', features: []};
       const STEP = 0.05; // ~5.5 km between lines
-      const MARGIN = PAN_MARGIN; // match maxBounds panning margin
+      const MARGIN = PAN_MARGIN * 2; // extend past maxBounds panning margin
       const minLng = bounds.minLng - MARGIN;
       const maxLng = bounds.maxLng + MARGIN;
       const minLat = bounds.minLat - MARGIN;
@@ -318,6 +331,8 @@ const OfflineMetroMap = forwardRef(
       );
     };
 
+    
+
     // Fit the camera to the active route's geometry (same edge padding as the
     // imperative fitToCoordinates). Returns false when there's no route to fit,
     // so the caller can fall back to the whole-network view.
@@ -346,10 +361,21 @@ const OfflineMetroMap = forwardRef(
     };
 
     useImperativeHandle(ref, () => ({
-      zoomIn: () =>
-        cameraRef.current?.zoomTo(Math.min(zoomRef.current + 1, 17), 250),
-      zoomOut: () =>
-        cameraRef.current?.zoomTo(Math.max(zoomRef.current - 1, 9), 250),
+      // Update zoomRef optimistically so rapid taps accumulate. Otherwise the
+      // ref only refreshes on onRegionDidChange (after the animation settles),
+      // so back-to-back presses all read the same stale value and recompute the
+      // same target — the map appears stuck. Clamp to the Camera's real limits
+      // (min 10 / max 14); pressing past them is a genuine no-op.
+      zoomIn: () => {
+        const next = Math.min(zoomRef.current + 1, MAX_ZOOM);
+        zoomRef.current = next;
+        cameraRef.current?.zoomTo(next, 250);
+      },
+      zoomOut: () => {
+        const next = Math.max(zoomRef.current - 1, MIN_ZOOM);
+        zoomRef.current = next;
+        cameraRef.current?.zoomTo(next, 250);
+      },
       reset: () => fitNetwork(500),
       fitToCoordinates: coords => {
         if (!coords?.length || !cameraRef.current) return;
@@ -375,7 +401,7 @@ const OfflineMetroMap = forwardRef(
       },
       centerOn: coord => {
         if (coord && cameraRef.current)
-          cameraRef.current.moveTo(lngLat(coord), 600);
+          cameraRef.current.moveTo(lngLat(coord), 0);
       },
       // Keep the current zoom, just recentre — used for live-tracking follow.
       followTo: coord => {
@@ -479,9 +505,9 @@ const OfflineMetroMap = forwardRef(
       () => (
         <Camera
           ref={cameraRef}
-          defaultSettings={{centerCoordinate: defaultCenter, zoomLevel: 10}}
-          minZoomLevel={10}
-          maxZoomLevel={13}
+          defaultSettings={{centerCoordinate: defaultCenter, zoomLevel: MIN_ZOOM}}
+          minZoomLevel={MIN_ZOOM}
+          maxZoomLevel={MAX_ZOOM}
           maxBounds={maxBounds}
         />
       ),
@@ -493,6 +519,9 @@ const OfflineMetroMap = forwardRef(
         <MapView
           style={styles.map}
           mapStyle={OFFLINE_STYLE}
+          // Render at the device's full refresh rate so pan/fling stays smooth
+          // (Android caps this to the hardware's ability; iOS uses Apple Maps).
+          preferredFramesPerSecond={60}
           rotateEnabled={false}
           pitchEnabled={false}
           attributionEnabled={false}
@@ -514,6 +543,110 @@ const OfflineMetroMap = forwardRef(
               }}
             />
           </ShapeSource>
+
+          {/* Bundled, fully-offline Delhi street base. Per-tile vector .pbf
+              files live in android/app/src/main/assets/delhi/{z}/{x}/{y}.pbf
+              (built from OSM via scripts/build_delhi_basemap.sh); MapLibre reads
+              them through the asset:// scheme, so nothing is fetched online.
+              Drawn between the grid and the metro network so the coloured metro
+              lines and labels always sit on top. Source layers (road / water /
+              waterway / landuse) and the `class` field match that build. */}
+          <VectorSource
+            id="delhi-base"
+            tileUrlTemplates={['asset://delhi/{z}/{x}/{y}.pbf']}
+            minZoomLevel={8}
+            maxZoomLevel={14}>
+            {/* Parks / woods / grass fills */}
+            <FillLayer
+              id="base-landuse"
+              sourceLayerID="landuse"
+              style={{
+                fillColor: [
+                  'match',
+                  ['get', 'class'],
+                  'grass',
+                  '#DEE7CD',
+                  // park + wood
+                  '#D7E3C4',
+                ],
+                fillOpacity: 0.9,
+              }}
+            />
+            {/* Water bodies */}
+            <FillLayer
+              id="base-water"
+              sourceLayerID="water"
+              style={{fillColor: '#B6D4E8'}}
+            />
+            {/* Rivers / canals */}
+            <LineLayer
+              id="base-waterway"
+              sourceLayerID="waterway"
+              style={{
+                lineColor: '#B6D4E8',
+                lineCap: 'round',
+                lineJoin: 'round',
+                lineWidth: [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  9,
+                  0.8,
+                  14,
+                  4,
+                ],
+              }}
+            />
+            {/* Casing under the major roads so they read as streets on cream */}
+            <LineLayer
+              id="base-road-casing"
+              sourceLayerID="road"
+              filter={['match', ['get', 'class'], ['motorway', 'trunk', 'primary'], true, false]}
+              style={{
+                lineColor: '#E7DECB',
+                lineCap: 'round',
+                lineJoin: 'round',
+                lineWidth: [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  9,
+                  1.5,
+                  14,
+                  7,
+                ],
+              }}
+            />
+            {/* Road bodies. Minor classes fade in at higher zooms to avoid
+                clutter over the whole-network view. */}
+            <LineLayer
+              id="base-road"
+              sourceLayerID="road"
+              filter={[
+                'step',
+                ['zoom'],
+                ['match', ['get', 'class'], ['motorway', 'trunk', 'primary'], true, false],
+                11,
+                ['match', ['get', 'class'], ['motorway', 'trunk', 'primary', 'secondary'], true, false],
+                12,
+                true,
+              ]}
+              style={{
+                lineColor: '#FFFFFF',
+                lineCap: 'round',
+                lineJoin: 'round',
+                lineWidth: [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  9,
+                  ['match', ['get', 'class'], ['motorway', 'trunk', 'primary'], 1, 0.4],
+                  14,
+                  ['match', ['get', 'class'], ['motorway', 'trunk', 'primary'], 5, 2.5],
+                ],
+              }}
+            />
+          </VectorSource>
 
           {/* Base network */}
           <ShapeSource id="network" shape={networkFC}>
