@@ -1,0 +1,20 @@
+diff --git a/node_modules/@react-native-community/geolocation/android/src/main/java/com/reactnativecommunity/geolocation/PlayServicesLocationManager.java b/node_modules/@react-native-community/geolocation/android/src/main/java/com/reactnativecommunity/geolocation/PlayServicesLocationManager.java
+index 423f7a5..29d1191 100644
+--- a/node_modules/@react-native-community/geolocation/android/src/main/java/com/reactnativecommunity/geolocation/PlayServicesLocationManager.java
++++ b/node_modules/@react-native-community/geolocation/android/src/main/java/com/reactnativecommunity/geolocation/PlayServicesLocationManager.java
+@@ -173,9 +173,12 @@ public class PlayServicesLocationManager extends BaseLocationManager {
+ 
+             @Override
+             public void onLocationAvailability(@NonNull LocationAvailability locationAvailability) {
+-                if (!locationAvailability.isLocationAvailable()) {
+-                    callbackHolder.error(PositionError.buildError(PositionError.POSITION_UNAVAILABLE, "Location not available (FusedLocationProvider/lastLocation)."));
+-                }
++                // Don't treat a transient "unavailable" as fatal. The Fused
++                // provider reports isLocationAvailable()==false at t=0 on cold
++                // GPS starts and SIM-less devices, even though onLocationResult
++                // delivers a fix moments later. Aborting here caused spurious
++                // POSITION_UNAVAILABLE errors; instead let onLocationResult or
++                // the JS-side timeout decide the outcome.
+             }
+         };
+     }

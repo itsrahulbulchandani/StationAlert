@@ -121,7 +121,7 @@ const RouteMapScreen = () => {
   const [markerData, setMarkerData] = useState([]);
   const [currentZoom, setCurrentZoom] = useState(10);
   const [locationLoading, setLocationLoading] = useState(false);
-  const { selectedRoute=[], setSelectedRoute, alertActive, liveTracking, setLiveTracking, handleSetAlert, handleStopAlerts, currentCoordinates, setActiveTab, setRoutesFound, setRouteSelectionOpened } = useContext(TabContext);
+  const { activeTab, selectedRoute=[], setSelectedRoute, alertActive, liveTracking, setLiveTracking, handleSetAlert, handleStopAlerts, currentCoordinates, setActiveTab, setRoutesFound, setRouteSelectionOpened } = useContext(TabContext);
   const [currentLocation, setCurrentLocation] = useState(null);
   // Only default to the Route view when a route actually exists; otherwise the
   // (disabled) Route segment would look pre-selected with nothing to show.
@@ -257,12 +257,12 @@ const RouteMapScreen = () => {
     setLiveTracking(prev => !prev);
   };
 
-  const toggleAlerts = () => {
+  const toggleAlerts = async () => {
     if (alertActive) {
       handleStopAlerts && handleStopAlerts();
     } else if (hasRoute) {
       followingRef.current = true;
-      handleSetAlert && handleSetAlert(selectedRoute); // also turns live tracking on
+      handleSetAlert && await handleSetAlert(selectedRoute); // also turns live tracking on
     }
   };
 
@@ -913,13 +913,15 @@ const getCurrentLocation = async () => {
         </Animated.View>
       )}
 
-      <SpotlightTutorial
-        steps={MAP_TUTORIAL_STEPS}
-        stepRefs={mapTutorialRefs}
-        storageKey="tutorial_map_v1"
-        onDone={() => setMapTutorialDone(true)}
-      />
-      {hasRoute && mapTutorialDone && (
+      {activeTab === 'route' && (
+        <SpotlightTutorial
+          steps={MAP_TUTORIAL_STEPS}
+          stepRefs={mapTutorialRefs}
+          storageKey="tutorial_map_v1"
+          onDone={() => setMapTutorialDone(true)}
+        />
+      )}
+      {activeTab === 'route' && hasRoute && mapTutorialDone && (
         <SpotlightTutorial
           steps={JOURNEY_VIEW_TUTORIAL_STEPS}
           stepRefs={journeyViewTutorialRefs}

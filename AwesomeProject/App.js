@@ -525,20 +525,25 @@ const showPermissionSettingsPrompt = (locationInfo, notificationStatus) => {
     lines.push('🔔  Notifications turned on, so Next Stop: Delhi Metro can reach you.');
   }
 
-  Alert.alert(
-    'Turn on Next Stop: Delhi Metro alerts',
-    `To notify you before your stop, Next Stop: Delhi Metro needs:\n\n${lines.join(
-      '\n\n',
-    )}\n\nOpen Settings to enable them?`,
-    [
-      {text: 'Not now', style: 'cancel'},
-      {
-        text: 'Open Settings',
-        onPress: () => openSettings().catch(() => console.warn('Cannot open settings')),
-      },
-    ],
-  );
-  return true;
+  return new Promise((resolve) => {
+    Alert.alert(
+      'Turn on Next Stop: Delhi Metro alerts',
+      `To notify you before your stop, Next Stop: Delhi Metro needs:\n\n${lines.join(
+        '\n\n',
+      )}\n\nOpen Settings to enable them?`,
+      [
+        {text: 'Not now', style: 'cancel', onPress: () => resolve(false)},
+        {
+          text: 'Open Settings',
+          onPress: () => {
+            openSettings().catch(() => console.warn('Cannot open settings'));
+            resolve(true);
+          },
+        },
+      ],
+      {cancelable: true, onDismiss: () => resolve(false)},
+    );
+  });
 };
 
 const requestLocationPermission = async () => {
@@ -607,47 +612,45 @@ const handleSetAlert = async (route) => {
     notifications: getPermissionStatusText(notificationStatus)
   });
 
-  // Hard failures: location is fully blocked/denied, or on iOS notifications
-  // are blocked (iOS alerts are useless without them). These must be fixed in
-  // Settings before the alert can work at all.
-  const isHardBlock = (
-    locationInfo.status === RESULTS.BLOCKED ||
-    locationInfo.status === RESULTS.DENIED ||
-    (notificationStatus === RESULTS.BLOCKED && Platform.OS === 'ios')
-  );
+  // BLOCKED = permanently denied; the OS will NOT show a runtime dialog again,
+  // so the only path back is Settings. DENIED = not yet asked (or soft-denied),
+  // which we can still resolve with a runtime request below.
+  let locationStatus = locationInfo.status;
+  let hasBackground = locationInfo.hasBackground;
+  let notifStatus = notificationStatus;
 
-  // Advisory only: background location not granted means alerts only fire
-  // while the app is open, but they DO still work. Show the settings tip once
-  // so the user knows, but proceed — do NOT return early.
-  const hasAdvisory =
-    (locationInfo.status === RESULTS.GRANTED && !locationInfo.hasBackground) ||
-    (notificationStatus === RESULTS.BLOCKED && Platform.OS === 'android');
-
-  if (isHardBlock) {
-    showPermissionSettingsPrompt(locationInfo, notificationStatus);
-    return;
+  // 1. Try a runtime request for anything not yet granted but still askable.
+  if (locationStatus === RESULTS.DENIED) {
+    await requestLocationPermission();
+    const refreshed = await checkLocationPermissionStatus();
+    locationStatus = refreshed.status;
+    hasBackground = refreshed.hasBackground;
+  }
+  if (notifStatus === RESULTS.DENIED) {
+    await requestNotificationPermission();
+    notifStatus = await checkNotificationPermissionStatus();
   }
 
-  if (hasAdvisory) {
-    showPermissionSettingsPrompt(locationInfo, notificationStatus);
-    // Continue — foreground location is enough for in-app alerts.
-  }
+  // 2. Re-evaluate. Anything still missing now needs a Settings round-trip, so
+  // show ONE prompt with an Open Settings button and STOP — never fall through
+  // to "Alert Set" while a required permission is missing.
+  const locationOk = locationStatus === RESULTS.GRANTED;
+  const notifOk = notifStatus === RESULTS.GRANTED;
 
-  // Request permissions if not granted
-  if (locationInfo.status !== RESULTS.GRANTED) {
-    const hasLocationPermission = await requestLocationPermission();
-    if (!hasLocationPermission) {
-      Alert.alert('Permission Required', 'Location permission is required for alerts.');
+  if (!locationOk || !notifOk || !hasBackground) {
+    const wentToSettings = await showPermissionSettingsPrompt(
+      {status: locationStatus, hasBackground},
+      notifStatus,
+    );
+    // Location and notifications are required — without them the alert can't
+    // function, so don't activate it. (Background location is the one true
+    // "advisory": if that's the ONLY thing missing, proceed with in-app alerts.)
+    if (!locationOk || !notifOk) {
       return;
     }
-  }
-
-  if (notificationStatus !== RESULTS.GRANTED) {
-    const hasNotificationPermission = await requestNotificationPermission();
-    // iOS alerts are useless without notifications, so block. On Android the
-    // live in-app tracking still works, so proceed even if it's declined.
-    if (!hasNotificationPermission && Platform.OS === 'ios') {
-      Alert.alert('Permission Required', 'Notification permission is required for alerts.');
+    if (wentToSettings) {
+      // User left to Settings to enable background location; don't also flip
+      // the alert on behind them.
       return;
     }
   }
@@ -862,10 +865,10 @@ const handleSetAlert = async (route) => {
         },
         error => { 
           console.log('Location watch error:', error); 
-          if ((error.code === 2 || error.code === 3) && !locationWatchAlertShown.current) {
-            locationWatchAlertShown.current = true;
-            Alert.alert('Unable to get location in time.');
-          }
+          // if ((error.code === 2 || error.code === 3) && !locationWatchAlertShown.current) {
+          //   locationWatchAlertShown.current = true;
+          //   Alert.alert('Unable to get location in time.');
+          // }
         },
         {
           enableHighAccuracy: true,
